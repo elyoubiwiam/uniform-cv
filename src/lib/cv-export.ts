@@ -11,8 +11,42 @@ export function dateRange(a: string | null, b: string | null) {
 }
 
 export function contactLine(cv: CV, t: Template) {
-  const parts = t.hideContactDetails ? [cv.location] : [cv.location, cv.email, cv.phone, ...cv.links];
+  const parts = t.hideContactDetails || t.anonymise ? [cv.location] : [cv.location, cv.email, cv.phone, ...cv.links];
   return parts.filter(Boolean).join("  ·  ");
+}
+
+export function normUrl(u: string) {
+  const v = u.trim();
+  if (/^(https?:|mailto:|tel:)/i.test(v)) return v;
+  if (/^[^\s@]+@[^\s@]+$/.test(v)) return `mailto:${v}`;
+  return `https://${v}`;
+}
+
+export function allLinks(cv: CV, t: Template) {
+  const out = (cv.hyperlinks ?? []).filter((h) => h.text.trim() && h.url.trim()).map((h) => ({ text: h.text, url: normUrl(h.url) }));
+  if (!t.hideContactDetails && !t.anonymise) {
+    for (const l of cv.links) out.push({ text: l, url: normUrl(l) });
+    if (cv.email) out.push({ text: cv.email, url: `mailto:${cv.email}` });
+  }
+  return out;
+}
+
+export type Seg = { text: string; url?: string };
+export function linkSegments(str: string, links: { text: string; url: string }[]): Seg[] {
+  const segs: Seg[] = [];
+  let rest = str;
+  while (rest) {
+    let best: { i: number; l: { text: string; url: string } } | null = null;
+    for (const l of links) {
+      const i = rest.indexOf(l.text);
+      if (i >= 0 && (!best || i < best.i || (i === best.i && l.text.length > best.l.text.length))) best = { i, l };
+    }
+    if (!best) { segs.push({ text: rest }); break; }
+    if (best.i > 0) segs.push({ text: rest.slice(0, best.i) });
+    segs.push({ text: best.l.text, url: best.l.url });
+    rest = rest.slice(best.i + best.l.text.length);
+  }
+  return segs;
 }
 
 export function safeFileName(cv: CV, ext: string) {
@@ -33,6 +67,9 @@ export async function buildPdf(cv: CV, t: Template): Promise<Blob> {
   const ink: [number, number, number] = [30, 36, 48];
   const grey: [number, number, number] = [100, 108, 120];
   let y = M;
+  const F = t.font === "times" ? "times" : "helvetica";
+  const center = t.align === "center";
+  const links = allLinks(cv, t);
 
   const ensure = (h: number) => {
     if (y + h > H - M - 20) {
@@ -41,15 +78,26 @@ export async function buildPdf(cv: CV, t: Template): Promise<Blob> {
     }
   };
 
-  const text = (str: string, size: number, opts: { bold?: boolean; color?: [number, number, number]; indent?: number; gap?: number } = {}) => {
-    doc.setFont("helvetica", opts.bold ? "bold" : "normal");
+  const text = (str: string, size: number, opts: { bold?: boolean; color?: [number, number, number]; indent?: number; gap?: number; center?: boolean } = {}) => {
+    doc.setFont(F, opts.bold ? "bold" : "normal");
     doc.setFontSize(size);
     doc.setTextColor(...(opts.color ?? ink));
     const lines = doc.splitTextToSize(str, CW - (opts.indent ?? 0)) as string[];
     const lh = size * 1.35;
     for (const line of lines) {
       ensure(lh);
-      doc.text(line, M + (opts.indent ?? 0), y + size);
+      const x0 = opts.center ? M + (CW - doc.getTextWidth(line)) / 2 : M + (opts.indent ?? 0);
+      doc.text(line, x0, y + size);
+      for (const l of links) {
+        const idx = line.indexOf(l.text);
+        if (idx < 0) continue;
+        const x = x0 + doc.getTextWidth(line.slice(0, idx));
+        const w = doc.getTextWidth(l.text);
+        doc.setDrawColor(...accent);
+        doc.setLineWidth(0.5);
+        doc.line(x, y + size + 1.5, x + w, y + size + 1.5);
+        doc.link(x, y, w, lh, { url: l.url });
+      }
       y += lh;
     }
     y += opts.gap ?? 0;
@@ -66,26 +114,28 @@ export async function buildPdf(cv: CV, t: Template): Promise<Blob> {
       /* ignore bad logo */
     }
   } else if (t.agencyName) {
-    doc.setFont("helvetica", "bold");
+    doc.setFont(F, "bold");
     doc.setFontSize(9);
     doc.setTextColor(...accent);
     doc.text(t.agencyName.toUpperCase(), M + CW, y + 6, { align: "right" });
   }
 
-  text(cv.fullName || "Candidate", 24, { bold: true });
-  if (cv.headline) text(cv.headline, 12, { color: accent, gap: 2 });
+  if (center && (t.logoDataUrl || t.agencyName)) y += 24;
+  text(cv.fullName || "Candidate", 24, { bold: true, center });
+  if (cv.headline) text(cv.headline, 12, { color: accent, gap: 2, center });
   const contact = contactLine(cv, t);
-  if (contact) text(contact, 9, { color: grey });
+  if (contact) text(contact, 9, { color: grey, center });
   y += 8;
   doc.setDrawColor(...accent);
   doc.setLineWidth(1.5);
   doc.line(M, y, M + CW, y);
   y += 18;
 
-  const section = (title: string) => {
-    ensure(40);
+  // Never leave a heading at the bottom of a page: reserve room for the heading plus its first block.
+  const section = (title: string, firstBlock = 40) => {
+    ensure(36 + firstBlock);
     y += 6;
-    doc.setFont("helvetica", "bold");
+    doc.setFont(F, "bold");
     doc.setFontSize(10);
     doc.setTextColor(...accent);
     doc.text(title.toUpperCase(), M, y + 10, { charSpace: 1 });
@@ -97,22 +147,22 @@ export async function buildPdf(cv: CV, t: Template): Promise<Blob> {
   };
 
   if (cv.summary) {
-    section("Profile");
+    section("Profile", Math.min(4, (doc.splitTextToSize(cv.summary, CW) as string[]).length) * 13.5);
     text(cv.summary, 10, { gap: 4 });
   }
 
   if (cv.experience.length) {
-    section("Experience");
+    section("Experience", 64);
     for (const e of cv.experience) {
       ensure(50);
       const dr = dateRange(e.startDate, e.endDate);
-      doc.setFont("helvetica", "bold");
+      doc.setFont(F, "bold");
       doc.setFontSize(11);
       doc.setTextColor(...ink);
       const titleLines = doc.splitTextToSize(e.title, CW - 130) as string[];
       doc.text(titleLines[0] ?? "", M, y + 11);
       if (dr) {
-        doc.setFont("helvetica", "normal");
+        doc.setFont(F, "normal");
         doc.setFontSize(9);
         doc.setTextColor(...grey);
         doc.text(dr, M + CW, y + 11, { align: "right" });
@@ -131,16 +181,16 @@ export async function buildPdf(cv: CV, t: Template): Promise<Blob> {
   }
 
   if (cv.education.length) {
-    section("Education");
+    section("Education", 44);
     for (const ed of cv.education) {
       ensure(36);
       const dr = dateRange(ed.startDate, ed.endDate);
-      doc.setFont("helvetica", "bold");
+      doc.setFont(F, "bold");
       doc.setFontSize(11);
       doc.setTextColor(...ink);
       doc.text((doc.splitTextToSize(ed.degree, CW - 130) as string[])[0] ?? "", M, y + 11);
       if (dr) {
-        doc.setFont("helvetica", "normal");
+        doc.setFont(F, "normal");
         doc.setFontSize(9);
         doc.setTextColor(...grey);
         doc.text(dr, M + CW, y + 11, { align: "right" });
@@ -154,7 +204,7 @@ export async function buildPdf(cv: CV, t: Template): Promise<Blob> {
 
   const listSection = (title: string, items: string[]) => {
     if (!items.length) return;
-    section(title);
+    section(title, 28);
     text(items.join("  ·  "), 10, { gap: 4 });
   };
   listSection("Skills", cv.skills);
@@ -165,7 +215,7 @@ export async function buildPdf(cv: CV, t: Template): Promise<Blob> {
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(F, "normal");
     doc.setFontSize(8);
     doc.setTextColor(...grey);
     const left = [t.agencyName, t.footerNote].filter(Boolean).join(" — ");
@@ -180,9 +230,17 @@ export async function buildPdf(cv: CV, t: Template): Promise<Blob> {
 
 export async function buildDocx(cv: CV, t: Template): Promise<Blob> {
   const d = await import("docx");
-  const { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle, TabStopType, ImageRun, Footer, PageNumber } = d;
+  const { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle, TabStopType, ImageRun, Footer, PageNumber, ExternalHyperlink } = d;
   const accent = t.accentColor.replace("#", "");
-  const font = "Calibri";
+  const font = t.font === "times" ? "Georgia" : "Calibri";
+  const links = allLinks(cv, t);
+  const headAlign = t.align === "center" ? AlignmentType.CENTER : AlignmentType.LEFT;
+  const runs = (str: string, o: { size: number; color?: string; bold?: boolean }) =>
+    linkSegments(str, links).map((s) =>
+      s.url
+        ? new ExternalHyperlink({ link: s.url, children: [new TextRun({ text: s.text, ...o, color: accent, underline: {}, font })] })
+        : new TextRun({ text: s.text, ...o, font }),
+    );
   const children: InstanceType<typeof Paragraph>[] = [];
 
   if (t.logoDataUrl) {
@@ -220,14 +278,15 @@ export async function buildDocx(cv: CV, t: Template): Promise<Blob> {
     );
   }
 
-  children.push(new Paragraph({ children: [new TextRun({ text: cv.fullName || "Candidate", bold: true, size: 48, font })] }));
-  if (cv.headline) children.push(new Paragraph({ children: [new TextRun({ text: cv.headline, size: 24, color: accent, font })] }));
+  children.push(new Paragraph({ alignment: headAlign, children: [new TextRun({ text: cv.fullName || "Candidate", bold: true, size: 48, font })] }));
+  if (cv.headline) children.push(new Paragraph({ alignment: headAlign, children: [new TextRun({ text: cv.headline, size: 24, color: accent, font })] }));
   const contact = contactLine(cv, t);
   children.push(
     new Paragraph({
       spacing: { after: 200 },
+      alignment: headAlign,
       border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: accent, space: 6 } },
-      children: [new TextRun({ text: contact, size: 18, color: "646C78", font })],
+      children: runs(contact, { size: 18, color: "646C78" }),
     }),
   );
 
@@ -235,15 +294,17 @@ export async function buildDocx(cv: CV, t: Template): Promise<Blob> {
     children.push(
       new Paragraph({
         spacing: { before: 240, after: 100 },
+        keepNext: true,
         border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "DCD6CC", space: 4 } },
         children: [new TextRun({ text: title.toUpperCase(), bold: true, size: 20, color: accent, characterSpacing: 20, font })],
       }),
     );
-  const body = (text: string) => new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text, size: 20, font })] });
+  const body = (text: string) => new Paragraph({ spacing: { after: 80 }, children: runs(text, { size: 20 }) });
   const titleRow = (title: string, dates: string) =>
     new Paragraph({
       tabStops: [{ type: TabStopType.RIGHT, position: 9000 }],
       spacing: { before: 120 },
+      keepNext: true,
       children: [
         new TextRun({ text: title, bold: true, size: 22, font }),
         ...(dates ? [new TextRun({ text: `\t${dates}`, size: 18, color: "646C78", font })] : []),
@@ -261,11 +322,12 @@ export async function buildDocx(cv: CV, t: Template): Promise<Blob> {
       children.push(
         new Paragraph({
           spacing: { after: 60 },
+          keepNext: true,
           children: [new TextRun({ text: [e.company, e.location].filter(Boolean).join(", "), size: 20, color: accent, font })],
         }),
       );
       for (const b of e.bullets)
-        children.push(new Paragraph({ bullet: { level: 0 }, spacing: { after: 40 }, children: [new TextRun({ text: b, size: 20, font })] }));
+        children.push(new Paragraph({ bullet: { level: 0 }, spacing: { after: 40 }, children: runs(b, { size: 20 }) }));
     }
   }
   if (cv.education.length) {

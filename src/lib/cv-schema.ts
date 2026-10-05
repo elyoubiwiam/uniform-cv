@@ -30,6 +30,7 @@ export const cvSchema = z.object({
   skills: z.array(z.string()),
   languages: z.array(z.string()),
   certifications: z.array(z.string()),
+  hyperlinks: z.array(z.object({ text: z.string(), url: z.string() })),
 });
 
 export type CV = z.infer<typeof cvSchema>;
@@ -40,6 +41,9 @@ export type Template = {
   logoDataUrl: string | null;
   hideContactDetails: boolean;
   footerNote: string;
+  anonymise: boolean;
+  font: "helvetica" | "times";
+  align: "left" | "center";
 };
 
 export const defaultTemplate: Template = {
@@ -48,4 +52,16 @@ export const defaultTemplate: Template = {
   logoDataUrl: null,
   hideContactDetails: false,
   footerNote: "",
+  anonymise: false,
+  font: "helvetica",
+  align: "left",
 };
+
+export type StylePreset = { id: string; name: string; note: string; accentColor: string; font: Template["font"]; align: Template["align"] };
+
+export const stylePresets: StylePreset[] = [
+  { id: "classic", name: "Classic", note: "Clean sans, left aligned", accentColor: "#C2512B", font: "helvetica", align: "left" },
+  { id: "executive", name: "Executive", note: "Serif, centred header", accentColor: "#1F3A5F", font: "times", align: "center" },
+  { id: "modern", name: "Modern", note: "Sans, teal accents", accentColor: "#0F766E", font: "helvetica", align: "left" },
+  { id: "minimal", name: "Minimal", note: "Serif, quiet charcoal", accentColor: "#374151", font: "times", align: "left" },
+];
