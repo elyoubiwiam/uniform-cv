@@ -1,23 +1,366 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, Download, FileText, Loader2, RotateCw, Trash2, Upload, AlertCircle, FileDown } from "lucide-react";
+import { toast } from "sonner";
+import { extractCv } from "@/lib/cv.functions";
+import { defaultTemplate, type CV, type Template } from "@/lib/cv-schema";
+import { buildDocx, buildPdf, downloadBlob, safeFileName } from "@/lib/cv-export";
+import type { Candidate } from "@/components/cv/types";
+import { CvEditor } from "@/components/cv/CvEditor";
+import { CvPreview } from "@/components/cv/CvPreview";
+import { TemplateSettings } from "@/components/cv/TemplateSettings";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Uniform — Batch CV formatting for recruiters" },
+      { name: "description", content: "Upload a stack of CVs, review them in one standard layout, and export client-ready PDF or Word files." },
+      { property: "og:title", content: "Uniform — Batch CV formatting for recruiters" },
+      { property: "og:description", content: "Turn a pile of CVs into one consistent, client-ready format in minutes." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
+const MAX_BYTES = 10 * 1024 * 1024;
+const CONCURRENCY = 3;
+const TEMPLATE_KEY = "uniform.template.v1";
+
+async function fileToPayload(file: File): Promise<{ kind: "pdf" | "text"; data: string }> {
+  const name = file.name.toLowerCase();
+  if (file.type === "application/pdf" || name.endsWith(".pdf")) {
+    const buf = new Uint8Array(await file.arrayBuffer());
+    let bin = "";
+    for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+    return { kind: "pdf", data: btoa(bin) };
+  }
+  if (name.endsWith(".docx")) {
+    const mammoth = await import("mammoth");
+    const { value } = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+    return { kind: "text", data: value };
+  }
+  return { kind: "text", data: await file.text() };
+}
+
 function Index() {
+  const extract = useServerFn(extractCv);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [template, setTemplate] = useState<Template>(defaultTemplate);
+  const [dragging, setDragging] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const running = useRef(new Set<string>());
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(TEMPLATE_KEY);
+      if (raw) setTemplate({ ...defaultTemplate, ...JSON.parse(raw) });
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const updateTemplate = (t: Template) => {
+    setTemplate(t);
+    try {
+      localStorage.setItem(TEMPLATE_KEY, JSON.stringify(t));
+    } catch {
+      toast.error("Logo is too large to save in this browser.");
+    }
+  };
+
+  const patch = (id: string, p: Partial<Candidate>) => setCandidates((cs) => cs.map((c) => (c.id === id ? { ...c, ...p } : c)));
+
+  const process = useCallback(
+    async (c: Candidate) => {
+      running.current.add(c.id);
+      patch(c.id, { status: "reading", error: null });
+      try {
+        const payload = await fileToPayload(c.file);
+        if (!payload.data.trim()) throw new Error("This file has no readable text.");
+        const res = await extract({ data: { filename: c.file.name, ...payload } });
+        if (res.ok) patch(c.id, { status: "ready", cv: res.cv });
+        else patch(c.id, { status: "error", error: res.error });
+      } catch (e) {
+        patch(c.id, { status: "error", error: e instanceof Error ? e.message : "Couldn't read this file." });
+      } finally {
+        running.current.delete(c.id);
+      }
+    },
+    [extract],
+  );
+
+  // simple queue
+  useEffect(() => {
+    const queued = candidates.filter((c) => c.status === "queued" && !running.current.has(c.id));
+    const free = CONCURRENCY - running.current.size;
+    queued.slice(0, Math.max(0, free)).forEach((c) => void process(c));
+  }, [candidates, process]);
+
+  const addFiles = (files: FileList | File[]) => {
+    const next: Candidate[] = [];
+    for (const f of Array.from(files)) {
+      if (!/\.(pdf|docx|txt)$/i.test(f.name)) {
+        toast.error(`${f.name}: only PDF, Word (.docx) or text files.`);
+        continue;
+      }
+      if (f.size > MAX_BYTES) {
+        toast.error(`${f.name} is larger than 10 MB.`);
+        continue;
+      }
+      next.push({ id: crypto.randomUUID(), file: f, status: "queued", cv: null, error: null });
+    }
+    if (!next.length) return;
+    setCandidates((cs) => [...cs, ...next]);
+    setSelectedId((s) => s ?? next[0]!.id);
+  };
+
+  const selected = candidates.find((c) => c.id === selectedId) ?? null;
+  const done = candidates.filter((c) => c.cv);
+  const approved = candidates.filter((c) => c.status === "approved");
+  const progress = useMemo(() => {
+    const total = candidates.length;
+    const finished = candidates.filter((c) => ["ready", "approved", "error"].includes(c.status)).length;
+    return { total, finished };
+  }, [candidates]);
+
+  const exportOne = async (cv: CV, kind: "pdf" | "docx") => {
+    const blob = kind === "pdf" ? await buildPdf(cv, template) : await buildDocx(cv, template);
+    downloadBlob(blob, safeFileName(cv, kind));
+  };
+
+  const exportBatch = async (kind: "pdf" | "docx") => {
+    const list = (approved.length ? approved : done).filter((c) => c.cv);
+    if (!list.length) return;
+    setExporting(true);
+    try {
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      const used = new Set<string>();
+      for (const c of list) {
+        const blob = kind === "pdf" ? await buildPdf(c.cv!, template) : await buildDocx(c.cv!, template);
+        let name = safeFileName(c.cv!, kind);
+        let n = 2;
+        while (used.has(name)) name = safeFileName(c.cv!, kind).replace(`.${kind}`, `_${n++}.${kind}`);
+        used.add(name);
+        zip.file(name, blob);
+      }
+      downloadBlob(await zip.generateAsync({ type: "blob" }), `CVs_${kind.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.zip`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Export failed. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background font-sans text-foreground">
+      <header className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur">
+        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-6 py-3">
+          <div className="flex items-baseline gap-3">
+            <span className="font-display text-2xl font-semibold tracking-tight">Uniform<span className="text-accent">.</span></span>
+            <span className="hidden text-sm text-muted-foreground sm:inline">CV formatting for recruiters</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <TemplateSettings template={template} onChange={updateTemplate} />
+            <Button size="sm" variant="outline" disabled={!done.length || exporting} onClick={() => exportBatch("docx")}>
+              <FileDown className="h-4 w-4" /> Word
+            </Button>
+            <Button size="sm" disabled={!done.length || exporting} onClick={() => exportBatch("pdf")} className="bg-accent text-accent-foreground hover:bg-accent/90">
+              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Export {approved.length ? `${approved.length} approved` : done.length ? `all ${done.length}` : ""} PDF
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {candidates.length === 0 ? (
+        <main className="mx-auto max-w-3xl px-6 py-20">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">Format only — no rewriting</p>
+          <h1 className="mt-3 font-display text-5xl font-medium leading-[1.05] tracking-tight sm:text-6xl">
+            A stack of CVs in.<br />One clean format out.
+          </h1>
+          <p className="mt-5 max-w-xl text-lg text-muted-foreground">
+            Drop in candidate CVs in any layout. Each one is rebuilt in your standard template using the candidate's own words — review, tweak, and send PDFs or Word files to your client.
+          </p>
+          <DropZone dragging={dragging} setDragging={setDragging} onFiles={addFiles} inputRef={inputRef} big />
+          <ol className="mt-10 grid gap-4 text-sm sm:grid-cols-3">
+            {["Upload PDFs or Word files in bulk", "Review each CV side by side", "Export PDF or Word as one zip"].map((s, i) => (
+              <li key={s} className="border-t border-foreground pt-3">
+                <span className="font-display text-2xl text-accent">0{i + 1}</span>
+                <p className="mt-1">{s}</p>
+              </li>
+            ))}
+          </ol>
+        </main>
+      ) : (
+        <main className="mx-auto grid max-w-[1500px] gap-6 px-6 py-6 lg:grid-cols-[300px_1fr]">
+          <aside className="space-y-3">
+            <DropZone dragging={dragging} setDragging={setDragging} onFiles={addFiles} inputRef={inputRef} />
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{progress.finished} of {progress.total} processed · {approved.length} approved</span>
+              <button className="hover:text-destructive" onClick={() => { setCandidates([]); setSelectedId(null); }}>Clear all</button>
+            </div>
+            <ul className="space-y-1">
+              {candidates.map((c) => (
+                <li key={c.id}>
+                  <div
+                    className={cn(
+                      "group flex items-center gap-2 rounded-md border border-transparent px-2 py-2 text-sm transition-colors",
+                      c.id === selectedId ? "border-border bg-card" : "hover:bg-secondary",
+                    )}
+                  >
+                    <button className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => setSelectedId(c.id)}>
+                      <StatusIcon status={c.status} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">{c.cv?.fullName || c.file.name}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{c.error ?? (c.cv ? c.file.name : c.status === "queued" ? "Waiting…" : "Reading…")}</span>
+                      </span>
+                    </button>
+                    <button
+                      aria-label="Remove"
+                      className="opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                      onClick={() => {
+                        setCandidates((cs) => cs.filter((x) => x.id !== c.id));
+                        if (selectedId === c.id) setSelectedId(null);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </aside>
+
+          <section className="min-w-0">
+            {!selected ? (
+              <p className="py-20 text-center text-muted-foreground">Select a CV on the left to review it.</p>
+            ) : !selected.cv ? (
+              <div className="flex flex-col items-center gap-4 py-24 text-center">
+                {selected.status === "error" ? (
+                  <>
+                    <AlertCircle className="h-8 w-8 text-destructive" />
+                    <p>{selected.error}</p>
+                    <Button variant="outline" onClick={() => patch(selected.id, { status: "queued", error: null })}>
+                      <RotateCw className="h-4 w-4" /> Retry
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                    <p className="text-muted-foreground">Reading {selected.file.name}…</p>
+                  </>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-display text-3xl">{selected.cv.fullName || "Candidate"}</h2>
+                    <p className="text-sm text-muted-foreground">From {selected.file.name}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => exportOne(selected.cv!, "docx")}>
+                      <FileText className="h-4 w-4" /> Word
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => exportOne(selected.cv!, "pdf")}>
+                      <Download className="h-4 w-4" /> PDF
+                    </Button>
+                    {selected.status === "approved" ? (
+                      <Button size="sm" variant="secondary" onClick={() => patch(selected.id, { status: "ready" })}>
+                        <Check className="h-4 w-4 text-success" /> Approved
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          patch(selected.id, { status: "approved" });
+                          const next = candidates.find((c) => c.id !== selected.id && c.status === "ready");
+                          if (next) setSelectedId(next.id);
+                        }}
+                      >
+                        <Check className="h-4 w-4" /> Approve & next
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <Tabs defaultValue="side" className="lg:hidden">
+                  <TabsList>
+                    <TabsTrigger value="side">Preview</TabsTrigger>
+                    <TabsTrigger value="edit">Edit</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="side"><CvPreview cv={selected.cv} template={template} /></TabsContent>
+                  <TabsContent value="edit"><CvEditor cv={selected.cv} onChange={(cv) => patch(selected.id, { cv })} /></TabsContent>
+                </Tabs>
+                <div className="hidden gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+                  <div className="max-h-[calc(100vh-180px)] overflow-y-auto pr-2">
+                    <CvEditor cv={selected.cv} onChange={(cv) => patch(selected.id, { cv })} />
+                  </div>
+                  <div className="sticky top-20 self-start">
+                    <CvPreview cv={selected.cv} template={template} />
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
+        </main>
+      )}
+    </div>
+  );
+}
+
+function StatusIcon({ status }: { status: Candidate["status"] }) {
+  if (status === "approved") return <Check className="h-4 w-4 shrink-0 text-success" />;
+  if (status === "error") return <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />;
+  if (status === "ready") return <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />;
+  return <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent" />;
+}
+
+function DropZone({
+  dragging,
+  setDragging,
+  onFiles,
+  inputRef,
+  big,
+}: {
+  dragging: boolean;
+  setDragging: (v: boolean) => void;
+  onFiles: (f: FileList) => void;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  big?: boolean;
+}) {
   return (
     <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
+      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => { e.preventDefault(); setDragging(false); onFiles(e.dataTransfer.files); }}
+      onClick={() => inputRef.current?.click()}
+      role="button"
+      tabIndex={0}
+      className={cn(
+        "flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-border text-center transition-colors hover:border-accent",
+        dragging && "border-accent bg-accent/5",
+        big ? "mt-10 gap-3 bg-card px-6 py-14" : "gap-1 px-4 py-5",
+      )}
     >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
+      <Upload className={cn("text-accent", big ? "h-8 w-8" : "h-5 w-5")} />
+      <p className={cn("font-medium", big ? "text-lg" : "text-sm")}>{big ? "Drop CVs here or click to upload" : "Add more CVs"}</p>
+      {big && <p className="text-sm text-muted-foreground">PDF, Word (.docx) or text · up to 10 MB each · as many as you like</p>}
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+        className="hidden"
+        onChange={(e) => { if (e.target.files) onFiles(e.target.files); e.target.value = ""; }}
       />
     </div>
   );
