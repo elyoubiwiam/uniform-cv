@@ -1,5 +1,6 @@
 import { Palette } from "lucide-react";
 import type { Template } from "@/lib/cv-schema";
+import { StylePicker } from "./StylePicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,17 @@ export function TemplateSettings({ template, onChange }: { template: Template; o
           <SheetDescription>Every CV is exported in this layout. Saved in this browser.</SheetDescription>
         </SheetHeader>
         <div className="space-y-4 px-4">
+          <div className="space-y-2">
+            <Label>Style inspiration</Label>
+            <StylePicker template={template} onChange={onChange} />
+          </div>
+          <div className="flex items-center justify-between rounded-md border border-border p-3">
+            <div>
+              <Label>Anonymise candidates</Label>
+              <p className="text-xs text-muted-foreground">Initials instead of name; removes contact details, address, birth date and other personal data. AI may edit text to do this. Applies to CVs read after switching on.</p>
+            </div>
+            <Switch checked={template.anonymise} onCheckedChange={(v) => set("anonymise", v)} />
+          </div>
           <div className="space-y-1">
             <Label>Agency or client name</Label>
             <Input value={template.agencyName} onChange={(e) => set("agencyName", e.target.value)} placeholder="e.g. Northbridge Talent" />

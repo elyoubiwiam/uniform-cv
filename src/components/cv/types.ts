@@ -7,5 +7,8 @@ export type Candidate = {
   file: File;
   status: Status;
   cv: CV | null;
+  originalCv: CV | null;
+  shortenAttempt: number;
+  shortening: boolean;
   error: string | null;
 };

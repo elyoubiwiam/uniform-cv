@@ -98,6 +98,20 @@ export function CvEditor({ cv, onChange }: { cv: CV; onChange: (cv: CV) => void 
       <Field label="Skills (comma separated)" value={cv.skills.join(", ")} onChange={(v) => set("skills", list(v))} multiline />
       <Field label="Languages (comma separated)" value={cv.languages.join(", ")} onChange={(v) => set("languages", list(v))} />
       <Field label="Certifications (comma separated)" value={cv.certifications.join(", ")} onChange={(v) => set("certifications", list(v))} />
+      <Field
+        label="Hyperlinks on text (one per line: linked text | https://…)"
+        value={(cv.hyperlinks ?? []).map((h) => `${h.text} | ${h.url}`).join("\n")}
+        onChange={(v) =>
+          set(
+            "hyperlinks",
+            lines(v).map((l) => {
+              const [text = "", ...url] = l.split("|");
+              return { text: text.trim(), url: url.join("|").trim() };
+            }),
+          )
+        }
+        multiline
+      />
     </div>
   );
 }
