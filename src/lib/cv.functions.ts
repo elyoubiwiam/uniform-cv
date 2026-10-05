@@ -29,34 +29,26 @@ ANONYMISE MODE (overrides format-only for personal data only): you MAY modify co
 - Remove the candidate's name, date of birth, age, gender, nationality, marital status, photo references, ID numbers and home address wherever they appear in any text.
 - Keep everything else verbatim.`;
 
-const SHORTEN = `You shorten a structured candidate CV for a recruitment agency by DELETION ONLY.
+const SHORTEN = `You shorten a structured candidate CV for a recruitment agency.
 - Keep the same structure, all roles, and all education entries.
-- You may remove complete original summary sentences and complete original bullet points only.
-- Every retained sentence and bullet must be character-for-character identical to the input. Never rewrite, paraphrase, condense, combine, correct, or translate text.
-- Keep all other fields exactly unchanged. Drop a hyperlink only if its exact linked text no longer appears.`;
+- You may remove content and rephrase the summary and bullet points so the shortened text remains clear, natural, and coherent.
+- Preserve the original meaning and every factual detail you retain. Never add, infer, exaggerate, or alter facts, numbers, skills, titles, employers, dates, or outcomes.
+- Keep names, dates, companies, contact fields, education, skills, languages, and certifications exactly unchanged.
+- Keep hyperlinks unchanged when their linked text remains; drop a hyperlink only if its text no longer appears.`;
 
 export type ExtractResult = { ok: true; cv: CV } | { ok: false; error: string };
 
 type Content = Array<{ type: "text"; text: string } | { type: "file"; filename: string; data: string; mediaType: string }>;
 
-function enforceDeletionOnly(original: CV, proposed: CV, attempt: number): CV {
-  const rotate = <T,>(items: T[], limit: number): T[] => {
-    if (items.length <= limit) return items;
-    const offset = attempt % items.length;
-    return [...items.slice(offset), ...items.slice(0, offset)].slice(0, limit);
-  };
-  const summary =
-    proposed.summary && original.summary?.includes(proposed.summary)
-      ? proposed.summary
-      : original.summary;
-  const experience = original.experience.map((role, index) => {
-    const selected = proposed.experience[index]?.bullets.filter((bullet) => role.bullets.includes(bullet)) ?? [];
-    return { ...role, bullets: selected.length ? selected.slice(0, 3) : rotate(role.bullets, 3) };
-  });
-  const retainedText = JSON.stringify({ ...original, summary, experience });
+function preserveFixedFields(original: CV, proposed: CV): CV {
+  const experience = original.experience.map((role, index) => ({
+    ...role,
+    bullets: proposed.experience[index]?.bullets.slice(0, 3) ?? role.bullets.slice(0, 3),
+  }));
+  const retainedText = JSON.stringify({ summary: proposed.summary, experience });
   return {
     ...original,
-    summary,
+    summary: proposed.summary,
     experience,
     hyperlinks: original.hyperlinks.filter((link) => retainedText.includes(link.text)),
   };
@@ -116,5 +108,5 @@ export const shortenCv = createServerFn({ method: "POST" })
     const text = `Attempt ${data.attempt + 1} — produce a fresh variation.\n\nCV JSON:\n${JSON.stringify(data.cv)}`;
     const result = await runCv(SHORTEN, [{ type: "text", text }]);
     if (!result.ok) return result;
-    return { ok: true, cv: enforceDeletionOnly(data.cv, result.cv, data.attempt) };
+    return { ok: true, cv: preserveFixedFields(data.cv, result.cv) };
   });
