@@ -118,7 +118,7 @@ function Index() {
     }
     if (!next.length) return;
     setCandidates((cs) => [...cs, ...next]);
-    setSelectedId((s) => s ?? next[0].id);
+    setSelectedId((s) => s ?? next[0]!.id);
   };
 
   const selected = candidates.find((c) => c.id === selectedId) ?? null;

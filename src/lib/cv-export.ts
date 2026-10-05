@@ -3,7 +3,7 @@ import type { CV, Template } from "./cv-schema";
 function hexToRgb(hex: string): [number, number, number] {
   const m = hex.replace("#", "").match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
   if (!m) return [194, 81, 43];
-  return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+  return [parseInt(m[1]!, 16), parseInt(m[2]!, 16), parseInt(m[3]!, 16)];
 }
 
 export function dateRange(a: string | null, b: string | null) {
@@ -187,7 +187,7 @@ export async function buildDocx(cv: CV, t: Template): Promise<Blob> {
 
   if (t.logoDataUrl) {
     try {
-      const [meta, b64] = t.logoDataUrl.split(",");
+      const [meta = "", b64 = ""] = t.logoDataUrl.split(",");
       const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
       const img = await new Promise<HTMLImageElement>((res, rej) => {
         const i = new Image();

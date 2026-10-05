@@ -19,7 +19,7 @@ function createRunIdFetch(initialRunId?: string) {
 }
 
 export function createGatewayResponsesModel() {
-  const apiKey = process.env.LOVABLE_API_KEY;
+  const apiKey = process.env['LOVABLE_API_KEY'];
   if (!apiKey) throw new Error("AI is not configured for this app.");
   const runIdFetch = createRunIdFetch();
   const provider = createOpenAI({
