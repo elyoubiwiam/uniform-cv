@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Download, FileText, Loader2, RotateCw, Trash2, Upload, AlertCircle, FileDown } from "lucide-react";
+import { Check, Download, FileText, Loader2, RotateCw, Scissors, RefreshCw, Undo2, EyeOff, Trash2, Upload, AlertCircle, FileDown } from "lucide-react";
 import { toast } from "sonner";
-import { extractCv } from "@/lib/cv.functions";
+import { extractCv, shortenCv } from "@/lib/cv.functions";
+import { StylePicker } from "@/components/cv/StylePicker";
 import { defaultTemplate, type CV, type Template } from "@/lib/cv-schema";
 import { buildDocx, buildPdf, downloadBlob, safeFileName } from "@/lib/cv-export";
 import type { Candidate } from "@/components/cv/types";
@@ -32,24 +33,54 @@ const MAX_BYTES = 10 * 1024 * 1024;
 const CONCURRENCY = 3;
 const TEMPLATE_KEY = "uniform.template.v1";
 
-async function fileToPayload(file: File): Promise<{ kind: "pdf" | "text"; data: string }> {
+async function pdfLinks(buf: ArrayBuffer): Promise<string[]> {
+  try {
+    const { PDFDocument, PDFName, PDFDict, PDFArray, PDFString, PDFHexString } = await import("pdf-lib");
+    const pdf = await PDFDocument.load(buf, { ignoreEncryption: true, updateMetadata: false });
+    const urls = new Set<string>();
+    for (const page of pdf.getPages()) {
+      const annots = page.node.lookupMaybe(PDFName.of("Annots"), PDFArray);
+      if (!annots) continue;
+      for (let i = 0; i < annots.size(); i++) {
+        const a = annots.lookupMaybe(i, PDFDict);
+        const uri = a?.lookupMaybe(PDFName.of("A"), PDFDict)?.lookup(PDFName.of("URI"));
+        if (uri instanceof PDFString || uri instanceof PDFHexString) urls.add(uri.decodeText());
+      }
+    }
+    return [...urls].slice(0, 200);
+  } catch {
+    return [];
+  }
+}
+
+async function fileToPayload(file: File): Promise<{ kind: "pdf" | "text"; data: string; hyperlinks: string[] }> {
   const name = file.name.toLowerCase();
   if (file.type === "application/pdf" || name.endsWith(".pdf")) {
-    const buf = new Uint8Array(await file.arrayBuffer());
+    const ab = await file.arrayBuffer();
+    const hyperlinks = await pdfLinks(ab.slice(0));
+    const buf = new Uint8Array(ab);
     let bin = "";
     for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
-    return { kind: "pdf", data: btoa(bin) };
+    return { kind: "pdf", data: btoa(bin), hyperlinks };
   }
   if (name.endsWith(".docx")) {
     const mammoth = await import("mammoth");
-    const { value } = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
-    return { kind: "text", data: value };
+    const ab = await file.arrayBuffer();
+    const { value } = await mammoth.extractRawText({ arrayBuffer: ab });
+    const { value: html } = await mammoth.convertToHtml({ arrayBuffer: ab });
+    const anchors = Array.from(new DOMParser().parseFromString(html, "text/html").querySelectorAll("a[href]"));
+    const hyperlinks = anchors
+      .map((a) => `${a.textContent?.trim() ?? ""} -> ${a.getAttribute("href")}`)
+      .filter((l) => !l.includes("-> #"))
+      .slice(0, 200);
+    return { kind: "text", data: value, hyperlinks };
   }
-  return { kind: "text", data: await file.text() };
+  return { kind: "text", data: await file.text(), hyperlinks: [] };
 }
 
 function Index() {
   const extract = useServerFn(extractCv);
+  const shorten = useServerFn(shortenCv);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [template, setTemplate] = useState<Template>(defaultTemplate);
@@ -57,6 +88,19 @@ function Index() {
   const [exporting, setExporting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const running = useRef(new Set<string>());
+  const templateRef = useRef(template);
+  templateRef.current = template;
+
+  const runShorten = async (c: Candidate) => {
+    if (!c.originalCv) return;
+    patch(c.id, { shortening: true });
+    const res = await shorten({ data: { cv: c.originalCv, anonymise: template.anonymise, attempt: c.shortenAttempt } }).catch(() => null);
+    if (res?.ok) patch(c.id, { cv: res.cv, shortening: false, shortenAttempt: c.shortenAttempt + 1 });
+    else {
+      patch(c.id, { shortening: false });
+      toast.error(res && !res.ok ? res.error : "Couldn't shorten this CV. Try again.");
+    }
+  };
 
   useEffect(() => {
     try {
@@ -84,8 +128,8 @@ function Index() {
       try {
         const payload = await fileToPayload(c.file);
         if (!payload.data.trim()) throw new Error("This file has no readable text.");
-        const res = await extract({ data: { filename: c.file.name, ...payload } });
-        if (res.ok) patch(c.id, { status: "ready", cv: res.cv });
+        const res = await extract({ data: { filename: c.file.name, ...payload, anonymise: templateRef.current.anonymise } });
+        if (res.ok) patch(c.id, { status: "ready", cv: res.cv, originalCv: res.cv, shortenAttempt: 0 });
         else patch(c.id, { status: "error", error: res.error });
       } catch (e) {
         patch(c.id, { status: "error", error: e instanceof Error ? e.message : "Couldn't read this file." });
@@ -114,7 +158,7 @@ function Index() {
         toast.error(`${f.name} is larger than 10 MB.`);
         continue;
       }
-      next.push({ id: crypto.randomUUID(), file: f, status: "queued", cv: null, error: null });
+      next.push({ id: crypto.randomUUID(), file: f, status: "queued", cv: null, originalCv: null, shortenAttempt: 0, shortening: false, error: null });
     }
     if (!next.length) return;
     setCandidates((cs) => [...cs, ...next]);
@@ -190,6 +234,15 @@ function Index() {
           <p className="mt-5 max-w-xl text-lg text-muted-foreground">
             Drop in candidate CVs in any layout. Each one is rebuilt in your standard template using the candidate's own words — review, tweak, and send PDFs or Word files to your client.
           </p>
+          <div className="mt-10">
+            <p className="mb-2 text-sm font-medium">1. Pick a style to start from <span className="text-muted-foreground">(you can fine-tune it under Template)</span></p>
+            <StylePicker template={template} onChange={updateTemplate} className="sm:grid-cols-4" />
+            <label className="mt-4 flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={template.anonymise} onChange={(e) => updateTemplate({ ...template, anonymise: e.target.checked })} className="h-4 w-4 accent-[var(--accent)]" />
+              Anonymise candidates (initials only, personal details removed)
+            </label>
+          </div>
+          <p className="mt-8 text-sm font-medium">2. Add your CVs</p>
           <DropZone dragging={dragging} setDragging={setDragging} onFiles={addFiles} inputRef={inputRef} big />
           <ol className="mt-10 grid gap-4 text-sm sm:grid-cols-3">
             {["Upload PDFs or Word files in bulk", "Review each CV side by side", "Export PDF or Word as one zip"].map((s, i) => (
@@ -265,7 +318,7 @@ function Index() {
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h2 className="font-display text-3xl">{selected.cv.fullName || "Candidate"}</h2>
-                    <p className="text-sm text-muted-foreground">From {selected.file.name}</p>
+                    <p className="text-sm text-muted-foreground">From {selected.file.name}{template.anonymise && <span className="ml-2 inline-flex items-center gap-1"><EyeOff className="h-3 w-3" /> Anonymised</span>}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" size="sm" onClick={() => exportOne(selected.cv!, "docx")}>
@@ -291,6 +344,27 @@ function Index() {
                       </Button>
                     )}
                   </div>
+                </div>
+                <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2 text-sm">
+                  <span className="px-1 text-muted-foreground">Length:</span>
+                  {selected.shortenAttempt === 0 ? (
+                    <Button size="sm" variant="outline" disabled={selected.shortening} onClick={() => runShorten(selected)}>
+                      {selected.shortening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scissors className="h-4 w-4" />} Make shorter
+                    </Button>
+                  ) : (
+                    <>
+                      <span className="px-1">Shorter version shown</span>
+                      <Button size="sm" variant="outline" disabled={selected.shortening} onClick={() => runShorten(selected)}>
+                        {selected.shortening ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Try another
+                      </Button>
+                      <Button size="sm" variant="ghost" disabled={selected.shortening} onClick={() => patch(selected.id, { cv: selected.originalCv, shortenAttempt: 0 })}>
+                        <Undo2 className="h-4 w-4" /> Back to original
+                      </Button>
+                    </>
+                  )}
+                  <Button size="sm" variant="ghost" className="ml-auto" disabled={selected.shortening} onClick={() => patch(selected.id, { status: "queued", cv: null })}>
+                    <RotateCw className="h-4 w-4" /> Re-read file
+                  </Button>
                 </div>
                 <Tabs defaultValue="side" className="lg:hidden">
                   <TabsList>
