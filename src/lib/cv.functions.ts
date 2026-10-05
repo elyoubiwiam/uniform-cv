@@ -12,10 +12,10 @@ const inputSchema = z.object({
 });
 
 const BASE = `You convert a candidate CV into a fixed structured format for a recruitment agency.
-FORMAT ONLY: copy the candidate's own wording. Do not rewrite, summarise, improve, translate, or invent anything.
+STRICT VERBATIM FORMAT ONLY: every character of text you return must be copied from the candidate's CV, except identifying or sensitive information when ANONYMISE MODE is active. Do not rewrite, paraphrase, summarise, condense, improve, translate, correct spelling or grammar, normalise wording, or invent anything.
 - Keep the original language of the CV.
-- Split experience into roles, most recent first; keep the original bullet points verbatim (split paragraphs into bullets only at sentence boundaries).
-- Dates: keep as written (e.g. "Jan 2021", "2019"); use "Present" only if the CV says current/present.
+- Split experience into roles, most recent first; copy original bullet points exactly. You may separate existing paragraphs only at their original sentence boundaries, without changing the sentence text.
+- Dates: copy them exactly as written. Never normalise date formats or substitute words such as "Present".
 - If a field is not in the CV use null (or an empty list). Never guess.
 - summary: the CV's own profile/summary text verbatim, or null.
 - headline: the candidate's stated job title/headline, or null.
@@ -29,15 +29,38 @@ ANONYMISE MODE (overrides format-only for personal data only): you MAY modify co
 - Remove the candidate's name, date of birth, age, gender, nationality, marital status, photo references, ID numbers and home address wherever they appear in any text.
 - Keep everything else verbatim.`;
 
-const SHORTEN = `You shorten a structured candidate CV for a recruitment agency.
-- Keep the same language and the same structure (all roles and education entries stay).
-- summary: at most 3 sentences. Each role: at most 3 of its strongest bullets, condensed.
-- Only use facts already present. Never invent numbers, skills, titles or employers.
-- Keep names, dates, companies, contact fields and hyperlinks unchanged; drop a hyperlink only if its text no longer appears.`;
+const SHORTEN = `You shorten a structured candidate CV for a recruitment agency by DELETION ONLY.
+- Keep the same structure, all roles, and all education entries.
+- You may remove complete original summary sentences and complete original bullet points only.
+- Every retained sentence and bullet must be character-for-character identical to the input. Never rewrite, paraphrase, condense, combine, correct, or translate text.
+- Keep all other fields exactly unchanged. Drop a hyperlink only if its exact linked text no longer appears.`;
 
 export type ExtractResult = { ok: true; cv: CV } | { ok: false; error: string };
 
 type Content = Array<{ type: "text"; text: string } | { type: "file"; filename: string; data: string; mediaType: string }>;
+
+function enforceDeletionOnly(original: CV, proposed: CV, attempt: number): CV {
+  const rotate = <T,>(items: T[], limit: number): T[] => {
+    if (items.length <= limit) return items;
+    const offset = attempt % items.length;
+    return [...items.slice(offset), ...items.slice(0, offset)].slice(0, limit);
+  };
+  const summary =
+    proposed.summary && original.summary?.includes(proposed.summary)
+      ? proposed.summary
+      : original.summary;
+  const experience = original.experience.map((role, index) => {
+    const selected = proposed.experience[index]?.bullets.filter((bullet) => role.bullets.includes(bullet)) ?? [];
+    return { ...role, bullets: selected.length ? selected.slice(0, 3) : rotate(role.bullets, 3) };
+  });
+  const retainedText = JSON.stringify({ ...original, summary, experience });
+  return {
+    ...original,
+    summary,
+    experience,
+    hyperlinks: original.hyperlinks.filter((link) => retainedText.includes(link.text)),
+  };
+}
 
 async function runCv(instructions: string, content: Content): Promise<ExtractResult> {
   const { streamText, Output, NoObjectGeneratedError } = await import("ai");
@@ -91,5 +114,7 @@ export const shortenCv = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ cv: cvSchema, anonymise: z.boolean().default(false), attempt: z.number().int().min(0).max(100) }).parse(d))
   .handler(async ({ data }): Promise<ExtractResult> => {
     const text = `Attempt ${data.attempt + 1} — produce a fresh variation.\n\nCV JSON:\n${JSON.stringify(data.cv)}`;
-    return runCv(SHORTEN + (data.anonymise ? ANON : ""), [{ type: "text", text }]);
+    const result = await runCv(SHORTEN, [{ type: "text", text }]);
+    if (!result.ok) return result;
+    return { ok: true, cv: enforceDeletionOnly(data.cv, result.cv, data.attempt) };
   });
