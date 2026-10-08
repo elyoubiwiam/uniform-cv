@@ -125,11 +125,12 @@ const issuesSchema = z.object({
   issues: z.array(z.object({ text: z.string(), suggestion: z.string(), reason: z.string() })),
 });
 
-const PROOF = `You proofread a structured candidate CV for spelling and grammar mistakes. You never rewrite the CV; you only report issues.
+const PROOF = `You proofread a structured candidate CV for spelling, grammar and wrong-term mistakes. You never rewrite the CV; you only report issues.
 - "text": the exact erroneous word or short phrase, copied character-for-character from one field (keep it as short as possible but unique enough to locate).
 - "suggestion": the corrected replacement for that exact text.
 - "reason": a few words, e.g. "Spelling", "Subject–verb agreement".
-- Only flag clear errors in the CV's own language. Do not flag style, tone, names, company names, technical terms, acronyms, or date formats.
+- Only flag clear errors in the CV's own language. Do not flag style, tone, names, company names, technical terms, or date formats.
+- ALSO flag misused terms: words or acronyms from another language, or terms used incorrectly, that have a standard equivalent in the CV's language (e.g. French "ONG" in an English CV -> "NGO", "stage" -> "internship"). Use reason "Wrong term" or "Foreign term".
 - Return an empty list if there are no errors.`;
 
 export type CheckResult = { ok: true; issues: { text: string; suggestion: string; reason: string }[] } | { ok: false; error: string };
