@@ -36,6 +36,7 @@ export const cvSchema = z.object({
 export type CV = z.infer<typeof cvSchema>;
 
 export type Template = {
+  audience: "recruiter" | "candidate";
   agencyName: string;
   accentColor: string;
   logoDataUrl: string | null;
@@ -44,9 +45,16 @@ export type Template = {
   anonymise: boolean;
   font: "helvetica" | "times";
   align: "left" | "center";
+  consultantName: string;
+  consultantTitle: string;
+  consultantEmail: string;
+  consultantPhone: string;
+  agencyAddress: string;
+  agencyWebsite: string;
 };
 
 export const defaultTemplate: Template = {
+  audience: "recruiter",
   agencyName: "",
   accentColor: "#C2512B",
   logoDataUrl: null,
@@ -55,7 +63,43 @@ export const defaultTemplate: Template = {
   anonymise: false,
   font: "helvetica",
   align: "left",
+  consultantName: "",
+  consultantTitle: "",
+  consultantEmail: "",
+  consultantPhone: "",
+  agencyAddress: "",
+  agencyWebsite: "",
 };
+
+/** Candidates never get agency branding or anonymisation, even if fields were filled in recruiter mode. */
+export function effectiveTemplate(t: Template): Template {
+  if (t.audience !== "candidate") return t;
+  return {
+    ...t,
+    agencyName: "",
+    logoDataUrl: null,
+    footerNote: "",
+    anonymise: false,
+    hideContactDetails: false,
+    consultantName: "",
+    consultantTitle: "",
+    consultantEmail: "",
+    consultantPhone: "",
+    agencyAddress: "",
+    agencyWebsite: "",
+  };
+}
+
+export function consultantLine(t: Template) {
+  const who = [t.consultantName, t.consultantTitle].filter(Boolean).join(", ");
+  const rest = [t.consultantEmail, t.consultantPhone].filter(Boolean);
+  if (!who && !rest.length) return "";
+  return `Presented by ${[who, ...rest].filter(Boolean).join("  ·  ")}`;
+}
+
+export function footerLines(t: Template): [string, string] {
+  return [[t.agencyName, t.footerNote].filter(Boolean).join(" — "), [t.agencyAddress, t.agencyWebsite].filter(Boolean).join("  ·  ")];
+}
 
 export type StylePreset = { id: string; name: string; note: string; accentColor: string; font: Template["font"]; align: Template["align"] };
 
