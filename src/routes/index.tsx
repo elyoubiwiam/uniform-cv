@@ -287,7 +287,7 @@ function Index() {
             <StylePicker template={template} onChange={updateTemplate} className="sm:grid-cols-4" />
             {template.audience === "recruiter" && <label className="mt-4 flex items-center gap-2 text-sm">
               <input type="checkbox" checked={template.anonymise} onChange={(e) => updateTemplate({ ...template, anonymise: e.target.checked })} className="h-4 w-4 accent-[var(--accent)]" />
-              Anonymise candidates (initials only, personal details removed)
+              Anonymise candidates — the name becomes initials and contact details (email, phone, address, links) are removed, so the client can't identify them
             </label>}
           </div>
           <p className="mt-8 text-sm font-medium">3. Add {template.audience === "candidate" ? "your CV" : "your CVs"}</p>
