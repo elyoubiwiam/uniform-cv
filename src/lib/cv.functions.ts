@@ -19,7 +19,7 @@ STRICT VERBATIM FORMAT ONLY: every character of text you return must be copied f
 - If a field is not in the CV use null (or an empty list). Never guess.
 - summary: the CV's own profile/summary text verbatim, or null.
 - headline: the candidate's stated job title/headline, or null.
-- hyperlinks: every link that was attached to text in the CV. "text" must be the exact visible words as they appear in one of your output fields (e.g. a project name, "Portfolio", a URL); "url" is the target. Use the embedded link list provided with the file when available.`;
+- hyperlinks: every link attached to text in the CV. "text" is its original visible title (e.g. "Portfolio"), even if that title appears nowhere else in the CV; "url" is the exact target. Preserve every embedded link provided with the file. These will be displayed beside the candidate's contact information.`;
 
 const ANON = `
 ANONYMISE MODE (overrides format-only for personal data only): you MAY modify content to remove identifying or sensitive data.
@@ -60,6 +60,7 @@ async function runCv(instructions: string, content: Content): Promise<ExtractRes
   try {
     const result = streamText({
       model: createGatewayResponsesModel(),
+      maxRetries: 0,
       instructions,
       messages: [{ role: "user", content }],
       output: Output.object({ schema: cvSchema }),
@@ -98,7 +99,7 @@ export const extractCv = createServerFn({ method: "POST" })
             { type: "text", text: `CV file: ${data.filename}${links}` },
             { type: "file", filename: data.filename, data: data.data, mediaType: "application/pdf" },
           ]
-        : [{ type: "text", text: `CV file: ${data.filename}${links}\n\n${data.data.slice(0, 200_000)}` }];
+        : [{ type: "text", text: `CV file: ${data.filename}${links}\n\n${data.data}` }];
     return runCv(BASE + (data.anonymise ? ANON : ""), content);
   });
 

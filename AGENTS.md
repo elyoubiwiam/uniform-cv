@@ -11,5 +11,6 @@
 
 ## Architecture rules
 - CV extraction runs in a server function (`src/lib/cv.functions.ts`) calling Lovable AI Gateway Responses with a strict zod schema; why: keeps the key server-side and output uniform.
-- PDF/Word export is generated client-side (jsPDF, docx, jszip) from the structured CV; why: no file storage needed and exports match the on-screen review.
+- PDF/Word export is generated client-side from the structured CV with individual downloads; why: no file storage needed and exports match the on-screen review.
+- Read PDF text layers in the browser with a bundled PDF.js worker and fall back to the original PDF if any page lacks usable text; why: avoids duplicate document reading while retaining scan support.
 - Candidate CVs live only in browser memory; the template is in localStorage; why: v1 has no backend/accounts and avoids storing personal data.
