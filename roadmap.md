@@ -5,3 +5,6 @@
 - [x] Privacy & data page + note (contact email is a placeholder)
 - [x] No pricing page — just say it is free
 - [ ] Pull CVs from an ATS (next planned step)
+
+- [ ] Style picker: show an example of each template style
+- [ ] Clarify "anonymise" wording (initials only, contact details removed)
