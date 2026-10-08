@@ -228,6 +228,7 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
   listSection("Skills", cv.skills);
   listSection("Languages", cv.languages);
   listSection("Certifications", cv.certifications);
+  listSection("Interests", cv.interests ?? []);
 
   // Footer on each page
   const pages = doc.getNumberOfPages();
@@ -374,6 +375,7 @@ export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
     ["Skills", cv.skills],
     ["Languages", cv.languages],
     ["Certifications", cv.certifications],
+    ["Interests", cv.interests ?? []],
   ] as const) {
     if (!items.length) continue;
     section(title);

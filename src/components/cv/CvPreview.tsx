@@ -101,6 +101,7 @@ export function CvPreview({ cv, template: raw, issues = [] }: { cv: CV; template
             ["Skills", cv.skills],
             ["Languages", cv.languages],
             ["Certifications", cv.certifications],
+            ["Interests", cv.interests ?? []],
           ] as const
         ).map(([t, items]) => items.length > 0 && <Section key={t} title={t}><p><L text={items.join("  ·  ")} /></p></Section>)}
         {(foot1 || foot2) && (
