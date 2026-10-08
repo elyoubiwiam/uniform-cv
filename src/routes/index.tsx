@@ -16,6 +16,7 @@ import { defaultTemplate, effectiveTemplate, separateCategories, type Template }
 import { buildDocx, buildPdf, downloadBlob, safeFileName } from "@/lib/cv-export";
 import type { Candidate } from "@/components/cv/types";
 import { OriginalView } from "@/components/cv/OriginalView";
+import { GeneratedPdfView } from "@/components/cv/GeneratedPdfView";
 import { CvEditor } from "@/components/cv/CvEditor";
 import { CvPreview } from "@/components/cv/CvPreview";
 import { PdfPageCount } from "@/components/cv/PdfPageCount";
@@ -364,8 +365,8 @@ function Index() {
           </div>
         </main>
       ) : (
-        <main className="mx-auto grid max-w-[1500px] gap-6 px-6 py-6 lg:grid-cols-[300px_1fr]">
-          <aside className="space-y-3">
+        <main className={cn("mx-auto grid gap-6 px-6 py-6", desktopView === "compare" ? "max-w-[1800px] lg:grid-cols-1" : "max-w-[1500px] lg:grid-cols-[300px_1fr]")}>
+          <aside className={cn("space-y-3", desktopView === "compare" && "lg:hidden")}>
             <DropZone dragging={dragging} setDragging={setDragging} onFiles={addFiles} inputRef={inputRef} />
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{progress.finished} of {progress.total} processed · {approved.length} approved</span>
@@ -491,7 +492,7 @@ function Index() {
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original</p>
                     <OriginalView file={selected.file} />
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uniformed<PdfPageCount cv={selected.cv} template={template} /></p>
-                    <CvPreview cv={selected.cv} template={template} issues={liveIssues(selected.cv, selected.issues ?? [])} />
+                    <GeneratedPdfView cv={selected.cv} template={template} />
                   </TabsContent>
                 </Tabs>
                 <Tabs value={desktopView} onValueChange={(v) => setDesktopView(v as "edit" | "compare")} className="hidden lg:block">
@@ -500,7 +501,7 @@ function Index() {
                     <TabsTrigger value="compare">Compare with original</TabsTrigger>
                   </TabsList>
                 </Tabs>
-                <div className={`hidden gap-6 lg:grid ${desktopView === "compare" ? "lg:grid-cols-2" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"}`}>
+                <div className={`hidden gap-8 lg:grid ${desktopView === "compare" ? "lg:grid-cols-2" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"}`}>
                   <div className={desktopView === "compare" ? "" : "max-h-[calc(100vh-180px)] overflow-y-auto pr-2"}>
                     {desktopView === "edit" ? (
                       <CvEditor cv={selected.cv} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} />
@@ -513,7 +514,11 @@ function Index() {
                   </div>
                   <div className="sticky top-20 self-start">
                     {desktopView === "compare" && <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uniformed<PdfPageCount cv={selected.cv} template={template} /></p>}
-                    <CvPreview cv={selected.cv} template={template} issues={liveIssues(selected.cv, selected.issues ?? [])} />
+                    {desktopView === "compare" ? (
+                      <GeneratedPdfView cv={selected.cv} template={template} />
+                    ) : (
+                      <CvPreview cv={selected.cv} template={template} issues={liveIssues(selected.cv, selected.issues ?? [])} />
+                    )}
                   </div>
                 </div>
               </>
