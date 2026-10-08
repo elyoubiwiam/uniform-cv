@@ -42,7 +42,7 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-success: var(--success);
-  --font-display: "Fraunces", Georgia, serif;
+  --font-display: "Manrope", system-ui, sans-serif;
   --font-sans: "Manrope", system-ui, sans-serif;
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
