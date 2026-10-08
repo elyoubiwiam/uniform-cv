@@ -1,4 +1,5 @@
 import { consultantLine, effectiveTemplate, footerLines, type CV, type Template } from "./cv-schema";
+import { footerLogoSize } from "./cv-footer";
 
 function hexToRgb(hex: string): [number, number, number] {
   const m = hex.replace("#", "").match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
@@ -77,9 +78,24 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
   const F = t.font === "times" ? "times" : "helvetica";
   const center = t.align === "center";
   const links = allLinks(cv, t);
+  let logo: { width: number; height: number } | null = null;
+  if (t.logoDataUrl) {
+    try {
+      const props = doc.getImageProperties(t.logoDataUrl);
+      logo = footerLogoSize(props.width, props.height);
+    } catch { /* Invalid logos are omitted. */ }
+  }
+  doc.setFont(F, "normal");
+  doc.setFontSize(8);
+  const footerTextX = M + (logo ? logo.width + 12 : 0);
+  const footerTextWidth = CW - (footerTextX - M) - 42;
+  const footerText = footerLines(t).filter(Boolean).flatMap((line) => doc.splitTextToSize(line, footerTextWidth) as string[]);
+  const footerHeight = Math.max(logo?.height ?? 0, footerText.length * 11, 11);
+  const footerTop = H - 23 - footerHeight;
+  const contentBottom = Math.min(H - M - 20, footerTop - 18);
 
   const ensure = (h: number) => {
-    if (y + h > H - M - 20) {
+    if (y + h > contentBottom) {
       doc.addPage();
       y = M;
     }
@@ -118,23 +134,14 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
   };
 
   // Header band
-  if (t.logoDataUrl) {
-    try {
-      const props = doc.getImageProperties(t.logoDataUrl);
-      const h = 28;
-      const w = (props.width / props.height) * h;
-      doc.addImage(t.logoDataUrl, M + CW - w, y - 6, w, h);
-    } catch {
-      /* ignore bad logo */
-    }
-  } else if (t.agencyName) {
+  if (t.agencyName) {
     doc.setFont(F, "bold");
     doc.setFontSize(9);
     doc.setTextColor(...accent);
     doc.text(t.agencyName.toUpperCase(), M + CW, y + 6, { align: "right" });
   }
 
-  if (center && (t.logoDataUrl || t.agencyName)) y += 24;
+  if (center && t.agencyName) y += 24;
   text(cv.fullName || "Candidate", 24, { bold: true, center });
   if (cv.headline) text(cv.headline, 12, { color: accent, gap: 2, center });
   const contact = contactLine(cv, t);
@@ -237,9 +244,8 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
     doc.setFont(F, "normal");
     doc.setFontSize(8);
     doc.setTextColor(...grey);
-    const [left, second] = footerLines(t);
-    if (left) doc.text(left, M, second ? H - 34 : H - 28);
-    if (second) doc.text(second, M, H - 23);
+    if (logo && t.logoDataUrl) doc.addImage(t.logoDataUrl, M, footerTop, logo.width, logo.height);
+    footerText.forEach((line, index) => doc.text(line, footerTextX, footerTop + 8 + index * 11));
     doc.text(`${i} / ${pages}`, M + CW, H - 28, { align: "right" });
   }
 
@@ -263,6 +269,7 @@ export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
         : new TextRun({ text: s.text, ...o, font }),
     );
   const children: InstanceType<typeof Paragraph>[] = [];
+  const footerBranding: InstanceType<typeof Paragraph>[] = [];
 
   if (t.logoDataUrl) {
     const logoDataUrl = t.logoDataUrl;
@@ -275,15 +282,16 @@ export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
         i.onerror = rej;
         i.src = logoDataUrl;
       });
-      const h = 36;
-      children.push(
+      const size = footerLogoSize(img.width, img.height);
+      footerBranding.push(
         new Paragraph({
-          alignment: AlignmentType.RIGHT,
+          alignment: AlignmentType.LEFT,
+          spacing: { after: 80 },
           children: [
             new ImageRun({
               type: meta.includes("png") ? "png" : "jpg",
               data: bytes,
-              transformation: { width: Math.round((img.width / img.height) * h), height: h },
+              transformation: { width: size.width * 4 / 3, height: size.height * 4 / 3 },
             }),
           ],
         }),
@@ -291,7 +299,8 @@ export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
     } catch {
       /* ignore */
     }
-  } else if (t.agencyName) {
+  }
+  if (t.agencyName) {
     children.push(
       new Paragraph({
         alignment: AlignmentType.RIGHT,
@@ -386,10 +395,11 @@ export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
   const doc = new Document({
     sections: [
       {
-        properties: { page: { margin: { top: 1000, bottom: 1000, left: 1000, right: 1000 } } },
+        properties: { page: { margin: { top: 1000, bottom: t.logoDataUrl ? 1600 : 1000, left: 1000, right: 1000, footer: 400 } } },
         footers: {
           default: new Footer({
             children: [
+              ...footerBranding,
               new Paragraph({
                 tabStops: [{ type: TabStopType.RIGHT, position: 9900 }],
                 children: [
