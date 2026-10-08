@@ -275,7 +275,7 @@ function Index() {
               ? "Drop in your CV in any layout. It's rebuilt in a clean, structured format using your own words, so recruitment software and recruiters both read it correctly."
               : "Drop in candidate CVs in any layout. Each one is rebuilt in your standard template using the candidate's own words — review, tweak, and send PDFs or Word files to your client."}
           </p>
-          <div className="mt-10">
+          <div className="mx-auto mt-10 max-w-sm">
             <BeforeAfterSlider before={cvBefore} after={cvAfter} />
           </div>
           <div className="mt-10">
