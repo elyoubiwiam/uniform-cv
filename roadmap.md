@@ -1,6 +1,7 @@
-- [ ] Recruiter / candidate switch (candidates see no agency branding)
-- [ ] Consultant details + agency footer in template and exports
-- [ ] Image/scanned CV support (OCR)
-- [ ] Before/after example on start screen
-- [ ] Privacy & data page + note
-- [ ] Pricing page (free during beta)
+- [x] Recruiter / candidate switch (candidates see no agency branding)
+- [x] Consultant details + agency footer in template and exports
+- [x] Image/scanned CV support (OCR)
+- [x] Before/after example on start screen
+- [x] Privacy & data page + note (contact email is a placeholder)
+- [x] Pricing page (free during beta; contact email is a placeholder)
+- [ ] Pull CVs from an ATS (next planned step)
