@@ -3,7 +3,7 @@ import { headerLinks } from "./cv-export";
 import { cvSchema, defaultTemplate } from "./cv-schema";
 import { hasCompleteTextLayer } from "./pdf-text";
 
-const cv = cvSchema.parse({ fullName: "Jane Doe", headline: null, location: null, email: null, phone: null, links: [], summary: null, experience: [], education: [], skills: [], languages: [], certifications: [], hyperlinks: [{ text: "Portfolio", url: "https://example.com/work" }] });
+const cv = cvSchema.parse({ fullName: "Jane Doe", headline: null, location: null, email: null, phone: null, links: [], summary: null, experience: [], education: [], skills: [], languages: [], certifications: [], interests: [], hyperlinks: [{ text: "Portfolio", url: "https://example.com/work" }] });
 
 describe("Candidate header links", () => {
   it("retains a titled link even when its title appears nowhere in the CV body", () => {

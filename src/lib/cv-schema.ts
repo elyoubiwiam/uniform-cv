@@ -30,6 +30,7 @@ export const cvSchema = z.object({
   skills: z.array(z.string()),
   languages: z.array(z.string()),
   certifications: z.array(z.string()),
+  interests: z.array(z.string()),
   hyperlinks: z.array(z.object({ text: z.string(), url: z.string() })),
 });
 
@@ -109,3 +110,13 @@ export const stylePresets: StylePreset[] = [
   { id: "modern", name: "Modern", note: "Sans, teal accents", accentColor: "#0F766E", font: "helvetica", align: "left" },
   { id: "minimal", name: "Minimal", note: "Serif, quiet charcoal", accentColor: "#374151", font: "times", align: "left" },
 ];
+
+const INTEREST_HEADING = /^(hobbies|hobby|interests?|centres? d'intérêts?|centres? d'interet|loisirs|passions?|activities|personal interests?)\s*[:\-–]?\s*/i;
+
+/** Safety net: if a category heading (e.g. "HOBBIES") ended up inside skills, move it and everything after into interests. */
+export function separateCategories(cv: CV): CV {
+  const idx = cv.skills.findIndex((s) => INTEREST_HEADING.test(s.trim()));
+  if (idx === -1) return cv;
+  const moved = cv.skills.slice(idx).map((s, i) => (i === 0 ? s.trim().replace(INTEREST_HEADING, "") : s)).filter((s) => s.trim());
+  return { ...cv, skills: cv.skills.slice(0, idx), interests: [...moved, ...(cv.interests ?? [])] };
+}

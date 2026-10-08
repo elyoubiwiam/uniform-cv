@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { cvSchema, type CV } from "./cv-schema";
+import { cvSchema, separateCategories, type CV } from "./cv-schema";
 import { reflowCv } from "./reflow";
 
 const inputSchema = z.object({
@@ -21,6 +21,7 @@ STRICT VERBATIM FORMAT ONLY: every character of text you return must be copied f
 - If a field is not in the CV use null (or an empty list). Never guess.
 - summary: the CV's own profile/summary text verbatim and COMPLETE (every sentence, never truncated), or null. Line breaks that only come from the source layout's line wrapping are not part of the text: join wrapped lines with a single space and keep only genuine paragraph breaks. The same applies to bullet points.
 - Copy ALL text of the CV into the matching fields; never drop sentences, bullets, roles or entries.
+- CATEGORIES MUST NOT BE MIXED: put each item only in the field whose category it truly belongs to. skills = professional/technical abilities and tools only. interests = hobbies, interests, sports, leisure, personal passions (e.g. Volleyball, Dance, Travel, Reading, Movies). languages = spoken languages only. certifications = certificates/courses. If the source lists different categories together or under one heading, recognise that the items don't match and split them into the correct fields. Never include a section heading (e.g. "HOBBIES") as an item.
 - headline: the candidate's stated job title/headline, or null.
 - hyperlinks: every link attached to text in the CV. "text" is its original visible title (e.g. "Portfolio"), even if that title appears nowhere else in the CV; "url" is the exact target. Preserve every embedded link provided with the file. These will be displayed beside the candidate's contact information.`;
 
@@ -36,7 +37,7 @@ const SHORTEN = `You shorten a structured candidate CV for a recruitment agency.
 - Keep the same structure, all roles, and all education entries.
 - You may remove content and rephrase the summary and bullet points so the shortened text remains clear, natural, and coherent.
 - Preserve the original meaning and every factual detail you retain. Never add, infer, exaggerate, or alter facts, numbers, skills, titles, employers, dates, or outcomes.
-- Keep names, dates, companies, contact fields, education, skills, languages, and certifications exactly unchanged.
+- Keep names, dates, companies, contact fields, education, skills, languages, certifications, and interests exactly unchanged.
 - Keep hyperlinks unchanged when their linked text remains; drop a hyperlink only if its text no longer appears.`;
 
 export type ExtractResult = { ok: true; cv: CV } | { ok: false; error: string };
@@ -77,7 +78,7 @@ async function runCv(instructions: string, content: Content): Promise<ExtractRes
         },
       },
     });
-    const cv = reflowCv(await result.output);
+    const cv = separateCategories(reflowCv(await result.output));
     return { ok: true, cv };
   } catch (err) {
     if (NoObjectGeneratedError.isInstance(err)) {
