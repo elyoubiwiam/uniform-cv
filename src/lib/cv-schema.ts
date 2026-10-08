@@ -112,16 +112,7 @@ export const stylePresets: StylePreset[] = [
 ];
 
 const INTEREST_HEADING = /^(hobbies|hobby|interests?|centres? d'intérêts?|centres? d'interet|loisirs|passions?|activities|personal interests?)\s*[:\-–]?\s*/i;
-const INTEREST_ITEM = /^(?:
-  reading|books?|literature|writing|creative writing|blogging|journaling|
-  travel(?:ling|ing)?|backpacking|road trips?|cultural travel|
-  photography|videography|film|cinema|movies?|music|singing|choir|concerts?|podcasts?|
-  dance|dancing|ballet|salsa|yoga|pilates|meditation|mindfulness|
-  sport|sports|football|soccer|rugby|cricket|tennis|badminton|squash|basketball|volleyball|handball|golf|hockey|baseball|softball|
-  running|jogging|marathons?|cycling|biking|swimming|surfing|skiing|snowboarding|climbing|hiking|trekking|walking|fitness|gym|weightlifting|
-  cooking|baking|food|gardening|crafts?|sewing|knitting|painting|drawing|art|design|
-  gaming|video games?|board games?|chess|puzzles?|volunteering|charity work|community work
-)$/ix;
+const INTEREST_ITEM = /^(?:reading|books?|literature|writing|creative writing|blogging|journaling|travel(?:ling|ing)?|backpacking|road trips?|cultural travel|photography|videography|film|cinema|movies?|music|singing|choir|concerts?|podcasts?|dance|dancing|ballet|salsa|yoga|pilates|meditation|mindfulness|sports?|football|soccer|rugby|cricket|tennis|badminton|squash|basketball|volleyball|handball|golf|hockey|baseball|softball|running|jogging|marathons?|cycling|biking|swimming|surfing|skiing|snowboarding|climbing|hiking|trekking|walking|fitness|gym|weightlifting|cooking|baking|food|gardening|crafts?|sewing|knitting|painting|drawing|art|gaming|video games?|board games?|chess|puzzles?|volunteering|charity work|community work)$/i;
 
 function interestParts(value: string): { skills: string[]; interests: string[] } {
   const trimmed = value.trim();
