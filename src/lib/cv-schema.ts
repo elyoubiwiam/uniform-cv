@@ -112,11 +112,28 @@ export const stylePresets: StylePreset[] = [
 ];
 
 const INTEREST_HEADING = /^(hobbies|hobby|interests?|centres? d'intérêts?|centres? d'interet|loisirs|passions?|activities|personal interests?)\s*[:\-–]?\s*/i;
+const INTEREST_ITEM = /^(?:reading|books?|literature|writing|creative writing|blogging|journaling|travel(?:ling|ing)?|backpacking|road trips?|cultural travel|photography|videography|film|cinema|movies?|music|singing|choir|concerts?|podcasts?|dance|dancing|ballet|salsa|yoga|pilates|meditation|mindfulness|sports?|football|soccer|rugby|cricket|tennis|badminton|squash|basketball|volleyball|handball|golf|hockey|baseball|softball|running|jogging|marathons?|cycling|biking|swimming|surfing|skiing|snowboarding|climbing|hiking|trekking|walking|fitness|gym|weightlifting|cooking|baking|food|gardening|crafts?|sewing|knitting|painting|drawing|art|gaming|video games?|board games?|chess|puzzles?|volunteering|charity work|community work)$/i;
 
-/** Safety net: if a category heading (e.g. "HOBBIES") ended up inside skills, move it and everything after into interests. */
+function interestParts(value: string): { skills: string[]; interests: string[] } {
+  const trimmed = value.trim();
+  const withoutHeading = trimmed.replace(INTEREST_HEADING, "").trim();
+  if (withoutHeading !== trimmed) {
+    return { skills: [], interests: withoutHeading ? withoutHeading.split(/[,;•|]+/).map((s) => s.trim()).filter(Boolean) : [] };
+  }
+  const parts = trimmed.split(/[,;•|]+/).map((s) => s.trim()).filter(Boolean);
+  const interests = parts.filter((part) => INTEREST_ITEM.test(part));
+  return interests.length ? { skills: parts.filter((part) => !INTEREST_ITEM.test(part)), interests } : { skills: [trimmed], interests: [] };
+}
+
+/** Safety net: recognise hobby headings and common hobby items even when the source mixed them into Skills. */
 export function separateCategories(cv: CV): CV {
   const idx = cv.skills.findIndex((s) => INTEREST_HEADING.test(s.trim()));
-  if (idx === -1) return cv;
-  const moved = cv.skills.slice(idx).map((s, i) => (i === 0 ? s.trim().replace(INTEREST_HEADING, "") : s)).filter((s) => s.trim());
-  return { ...cv, skills: cv.skills.slice(0, idx), interests: [...moved, ...(cv.interests ?? [])] };
+  const skillSource = idx === -1 ? cv.skills : cv.skills.slice(0, idx);
+  const forcedInterests = idx === -1
+    ? []
+    : cv.skills.slice(idx).flatMap((s, i) => i === 0 ? interestParts(s).interests : s.split(/[,;•|]+/).map((part) => part.trim()).filter(Boolean));
+  const separated = skillSource.map(interestParts);
+  const skills = separated.flatMap((part) => part.skills);
+  const interests = [...separated.flatMap((part) => part.interests), ...forcedInterests, ...(cv.interests ?? [])];
+  return { ...cv, skills, interests: [...new Set(interests)] };
 }

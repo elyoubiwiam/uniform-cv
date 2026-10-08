@@ -126,11 +126,13 @@ export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onCh
         );
       })}
 
-      <Heading>Skills & more</Heading>
+      <Heading>Skills</Heading>
       <Field label="Skills (comma separated)" value={cv.skills.join(", ")} onChange={(v) => set("skills", list(v))} multiline />
+      <Heading>Interests & hobbies</Heading>
+      <Field label="Interests & hobbies (comma separated)" value={(cv.interests ?? []).join(", ")} onChange={(v) => set("interests", list(v))} multiline />
+      <Heading>Languages & certifications</Heading>
       <Field label="Languages (comma separated)" value={cv.languages.join(", ")} onChange={(v) => set("languages", list(v))} />
       <Field label="Certifications (comma separated)" value={cv.certifications.join(", ")} onChange={(v) => set("certifications", list(v))} />
-      <Field label="Interests & hobbies (comma separated)" value={(cv.interests ?? []).join(", ")} onChange={(v) => set("interests", list(v))} multiline />
     </div>
   );
 }
