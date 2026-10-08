@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import cvBefore from "@/assets/cv-before.jpg";
 import cvAfter from "@/assets/cv-after.jpg";
+import uniformIcon from "@/assets/uniform-icon.png";
 import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
 import { imageType, type ImageType } from "@/lib/file-kind";
 import { AudiencePicker } from "@/components/cv/AudiencePicker";
