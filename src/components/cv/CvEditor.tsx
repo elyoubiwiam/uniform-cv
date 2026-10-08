@@ -1,4 +1,5 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Link2, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
 import type { CV } from "@/lib/cv-schema";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,14 +10,20 @@ const lines = (s: string) => s.split("\n").map((l) => l.trim()).filter(Boolean);
 const list = (s: string) => s.split(",").map((l) => l.trim()).filter(Boolean);
 const orNull = (s: string) => (s.trim() ? s : null);
 
+let reportSelection: (t: string) => void = () => {};
+const onSel = (e: React.SyntheticEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const el = e.currentTarget;
+  reportSelection(el.value.slice(el.selectionStart ?? 0, el.selectionEnd ?? 0).trim());
+};
+
 function Field({ label, value, onChange, multiline }: { label: string; value: string | null; onChange: (v: string) => void; multiline?: boolean }) {
   return (
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       {multiline ? (
-        <Textarea value={value ?? ""} onChange={(e) => onChange(e.target.value)} rows={4} />
+        <Textarea value={value ?? ""} onChange={(e) => onChange(e.target.value)} onSelect={onSel} rows={4} />
       ) : (
-        <Input value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
+        <Input value={value ?? ""} onChange={(e) => onChange(e.target.value)} onSelect={onSel} />
       )}
     </div>
   );
@@ -37,9 +44,26 @@ function Heading({ children, onAdd }: { children: React.ReactNode; onAdd?: () =>
 
 export function CvEditor({ cv, onChange }: { cv: CV; onChange: (cv: CV) => void }) {
   const set = <K extends keyof CV>(k: K, v: CV[K]) => onChange({ ...cv, [k]: v });
+  const [selected, setSelected] = useState("");
+  reportSelection = setSelected;
+  const addLink = () => {
+    if (!selected) return;
+    const url = window.prompt(`Link for "${selected}":`, "https://");
+    if (!url || !url.trim() || url.trim() === "https://") return;
+    set("hyperlinks", [...(cv.hyperlinks ?? []).filter((h) => h.text !== selected), { text: selected, url: url.trim() }]);
+    setSelected("");
+  };
 
   return (
     <div className="space-y-3">
+      <div className="sticky top-0 z-10 flex items-center gap-2 rounded-md border border-border bg-card p-2 text-xs">
+        <Button size="sm" variant="outline" disabled={!selected} onMouseDown={(e) => e.preventDefault()} onClick={addLink}>
+          <Link2 className="h-4 w-4" /> Add link
+        </Button>
+        <span className="truncate text-muted-foreground">
+          {selected ? `Selected: "${selected}"` : "Select a word in any field below to link it"}
+        </span>
+      </div>
       <Heading>Candidate</Heading>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Full name" value={cv.fullName} onChange={(v) => set("fullName", v)} />
