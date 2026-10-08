@@ -1,6 +1,5 @@
-import { Check, Link2, Plus, Trash2, X } from "lucide-react";
+import { Check, Plus, Trash2, X } from "lucide-react";
 import { applyFix, type Issue } from "@/lib/proofread";
-import { useState } from "react";
 import type { CV } from "@/lib/cv-schema";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,20 +10,14 @@ const lines = (s: string) => s.split("\n").map((l) => l.trim()).filter(Boolean);
 const list = (s: string) => s.split(",").map((l) => l.trim()).filter(Boolean);
 const orNull = (s: string) => (s.trim() ? s : null);
 
-let reportSelection: (t: string) => void = () => {};
-const onSel = (e: React.SyntheticEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-  const el = e.currentTarget;
-  reportSelection(el.value.slice(el.selectionStart ?? 0, el.selectionEnd ?? 0).trim());
-};
-
 function Field({ label, value, onChange, multiline }: { label: string; value: string | null; onChange: (v: string) => void; multiline?: boolean }) {
   return (
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       {multiline ? (
-        <Textarea value={value ?? ""} onChange={(e) => onChange(e.target.value)} onSelect={onSel} rows={4} />
+        <Textarea value={value ?? ""} onChange={(e) => onChange(e.target.value)} rows={4} />
       ) : (
-        <Input value={value ?? ""} onChange={(e) => onChange(e.target.value)} onSelect={onSel} />
+        <Input value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
       )}
     </div>
   );
@@ -45,26 +38,8 @@ function Heading({ children, onAdd }: { children: React.ReactNode; onAdd?: () =>
 
 export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onChange: (cv: CV) => void; issues?: Issue[]; onIssues?: (i: Issue[]) => void }) {
   const set = <K extends keyof CV>(k: K, v: CV[K]) => onChange({ ...cv, [k]: v });
-  const [selected, setSelected] = useState("");
-  reportSelection = setSelected;
-  const addLink = () => {
-    if (!selected) return;
-    const url = window.prompt(`Link for "${selected}":`, "https://");
-    if (!url || !url.trim() || url.trim() === "https://") return;
-    set("hyperlinks", [...(cv.hyperlinks ?? []).filter((h) => h.text !== selected), { text: selected, url: url.trim() }]);
-    setSelected("");
-  };
-
   return (
     <div className="space-y-3">
-      <div className="sticky top-0 z-10 flex items-center gap-2 rounded-md border border-border bg-card p-2 text-xs">
-        <Button size="sm" variant="outline" disabled={!selected} onMouseDown={(e) => e.preventDefault()} onClick={addLink}>
-          <Link2 className="h-4 w-4" /> Add link
-        </Button>
-        <span className="truncate text-muted-foreground">
-          {selected ? `Selected: "${selected}"` : "Select a word in any field below to link it"}
-        </span>
-      </div>
       {issues.length > 0 && (
         <div className="space-y-2 rounded-md border border-destructive/40 bg-card p-3">
           <p className="text-xs text-muted-foreground">{issues.length} possible spelling/grammar issue{issues.length > 1 ? "s" : ""}, underlined in red in the preview. Nothing is changed unless you accept it — or just edit the text below.</p>
@@ -93,6 +68,19 @@ export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onCh
         <Field label="Phone" value={cv.phone} onChange={(v) => set("phone", orNull(v))} />
         <Field label="Links (comma separated)" value={cv.links.join(", ")} onChange={(v) => set("links", list(v))} />
       </div>
+      <Heading onAdd={() => set("hyperlinks", [...cv.hyperlinks, { text: "", url: "" }])}>Candidate links</Heading>
+      {cv.hyperlinks.map((h, i) => {
+        const up = (patch: Partial<typeof h>) => set("hyperlinks", cv.hyperlinks.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+        return (
+          <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2">
+            <Field label="Title" value={h.text} onChange={(v) => up({ text: v })} />
+            <Field label="Web address" value={h.url} onChange={(v) => up({ url: v })} />
+            <Button aria-label="Remove candidate link" variant="ghost" size="icon" className="text-destructive" onClick={() => set("hyperlinks", cv.hyperlinks.filter((_, j) => j !== i))}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      })}
       <Field label="Profile" value={cv.summary} onChange={(v) => set("summary", orNull(v))} multiline />
 
       <Heading onAdd={() => set("experience", [...cv.experience, { title: "", company: "", location: null, startDate: null, endDate: null, bullets: [] }])}>
@@ -142,23 +130,6 @@ export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onCh
       <Field label="Skills (comma separated)" value={cv.skills.join(", ")} onChange={(v) => set("skills", list(v))} multiline />
       <Field label="Languages (comma separated)" value={cv.languages.join(", ")} onChange={(v) => set("languages", list(v))} />
       <Field label="Certifications (comma separated)" value={cv.certifications.join(", ")} onChange={(v) => set("certifications", list(v))} />
-      <Heading onAdd={() => set("hyperlinks", [...(cv.hyperlinks ?? []), { text: "", url: "" }])}>Hyperlinks</Heading>
-      {(cv.hyperlinks ?? []).map((h, i) => {
-        const up = (patch: Partial<typeof h>) => set("hyperlinks", (cv.hyperlinks ?? []).map((x, j) => (j === i ? { ...x, ...patch } : x)));
-        return (
-          <div key={i} className="flex items-end gap-2">
-            <div className="flex-1">
-              <Field label="Title (the clickable text)" value={h.text} onChange={(v) => up({ text: v })} />
-            </div>
-            <div className="flex-1">
-              <Field label="Web address (https://…)" value={h.url} onChange={(v) => up({ url: v })} />
-            </div>
-            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => set("hyperlinks", (cv.hyperlinks ?? []).filter((_, j) => j !== i))}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        );
-      })}
     </div>
   );
 }

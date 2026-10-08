@@ -1,6 +1,6 @@
 import type { CV, Template } from "@/lib/cv-schema";
 import type { Issue } from "@/lib/proofread";
-import { allLinks, contactLine, dateRange, linkSegments } from "@/lib/cv-export";
+import { allLinks, contactLine, dateRange, headerLinks, linkSegments } from "@/lib/cv-export";
 
 /** On-screen preview of the export. Uses the agency's chosen accent (user data, not a theme colour). */
 function Marked({ text, issues }: { text: string; issues: Issue[] }) {
@@ -56,6 +56,9 @@ export function CvPreview({ cv, template, issues = [] }: { cv: CV; template: Tem
           ) : null}
         </div>
         <p className={`mt-1 text-[11px] text-muted-foreground ${center ? "text-center" : ""}`}><L text={contactLine(cv, template)} /></p>
+        <div className={`mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] ${center ? "justify-center" : ""}`}>
+          {headerLinks(cv, template).map((link, i) => <a key={i} href={link.url} target="_blank" rel="noreferrer" className="break-all underline" style={accent}>{link.text}</a>)}
+        </div>
         <div className="mt-3 h-[2px]" style={{ backgroundColor: template.accentColor }} />
 
         {cv.summary && <Section title="Profile"><p className="whitespace-pre-line"><L text={cv.summary} /></p></Section>}
