@@ -1,3 +1,4 @@
+import { tidyAnonymisedCv } from "./anon-tidy";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { cvSchema, separateCategories, type CV } from "./cv-schema";
