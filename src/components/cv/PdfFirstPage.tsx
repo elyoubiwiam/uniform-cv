@@ -69,24 +69,25 @@ export function PdfFirstPage({ source, loadingLabel }: { source: Blob; loadingLa
   return (
     <div className="relative mx-auto aspect-[1/1.414] w-full overflow-auto rounded-sm bg-card shadow-[0_1px_3px_rgb(0_0_0/0.08),0_12px_40px_-12px_rgb(0_0_0/0.18)]">
       {pageCount > 0 && (
-        <div className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-md border border-border bg-card/95 p-1 shadow-sm">
+        <div className="absolute left-2 top-2 z-10 flex items-center gap-0.5 rounded-md border border-border bg-card/95 p-1 shadow-sm sm:gap-1">
           <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="Previous page" disabled={pageNumber <= 1} onClick={() => setPageNumber((value) => Math.max(1, value - 1))}>
             <ChevronLeft />
           </Button>
-          <span className="min-w-20 px-1 text-center text-xs tabular-nums text-foreground" aria-live="polite">
-            Page {pageNumber} of {pageCount}
+          <span className="min-w-14 px-0.5 text-center text-xs tabular-nums text-foreground sm:min-w-20 sm:px-1" aria-live="polite">
+            <span className="sm:hidden">{pageNumber} / {pageCount}</span>
+            <span className="hidden sm:inline">Page {pageNumber} of {pageCount}</span>
           </span>
           <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="Next page" disabled={pageNumber >= pageCount} onClick={() => setPageNumber((value) => Math.min(pageCount, value + 1))}>
             <ChevronRight />
           </Button>
         </div>
       )}
-      <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-md border border-border bg-card/95 p-1 shadow-sm">
+      <div className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-md border border-border bg-card/95 p-1 shadow-sm sm:gap-1">
         <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="Zoom out" disabled={zoom <= 0.5} onClick={() => setZoom((value) => Math.max(0.5, +(value - 0.25).toFixed(2)))}>
           <Minus />
         </Button>
-        <Button type="button" variant="ghost" size="sm" className="h-7 min-w-14 px-1 tabular-nums" aria-label="Reset zoom" onClick={() => setZoom(1)}>
-          <RotateCcw className="h-3.5 w-3.5" /> {Math.round(zoom * 100)}%
+        <Button type="button" variant="ghost" size="sm" className="h-7 min-w-10 px-1 tabular-nums sm:min-w-14" aria-label="Reset zoom" onClick={() => setZoom(1)}>
+          <RotateCcw className="hidden h-3.5 w-3.5 sm:block" /> {Math.round(zoom * 100)}%
         </Button>
         <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="Zoom in" disabled={zoom >= 3} onClick={() => setZoom((value) => Math.min(3, +(value + 0.25).toFixed(2)))}>
           <Plus />
