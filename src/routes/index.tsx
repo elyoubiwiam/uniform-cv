@@ -284,7 +284,7 @@ function Index() {
             <div className="flex items-baseline gap-3">
               <img src={uniformIcon} alt="" aria-hidden className="h-8 w-8 self-center" width={32} height={32} />
               <span className="font-display text-2xl font-semibold tracking-tight">Uniform<span className="text-accent">.</span></span>
-            <span className="hidden text-sm text-muted-foreground md:inline">{template.audience === "candidate" ? "Structure your CV" : "CV formatting for recruiters"}</span>
+            <span className="hidden text-sm text-muted-foreground md:inline">{template.audience === "candidate" ? "Uniform your CV" : "CV formatting for recruiters and candidates"}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="hidden px-2 text-sm text-muted-foreground sm:inline">Free</span>
