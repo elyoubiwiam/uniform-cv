@@ -259,7 +259,7 @@ function Index() {
           <p className="mt-8 text-sm font-medium">2. Add your CVs</p>
           <DropZone dragging={dragging} setDragging={setDragging} onFiles={addFiles} inputRef={inputRef} big />
           <ol className="mt-10 grid gap-4 text-sm sm:grid-cols-3">
-            {["Upload PDFs or Word files in bulk", "Review each CV side by side", "Export PDF or Word as one zip"].map((s, i) => (
+            {["Upload PDFs or Word files in bulk", "Review each CV side by side", "Download each as PDF or Word"].map((s, i) => (
               <li key={s} className="border-t border-foreground pt-3">
                 <span className="font-display text-2xl text-accent">0{i + 1}</span>
                 <p className="mt-1">{s}</p>
