@@ -3,5 +3,5 @@
 - [x] Image/scanned CV support (OCR)
 - [x] Before/after example on start screen
 - [x] Privacy & data page + note (contact email is a placeholder)
-- [x] Pricing page (free during beta; contact email is a placeholder)
+- [x] No pricing page — just say it is free
 - [ ] Pull CVs from an ATS (next planned step)
