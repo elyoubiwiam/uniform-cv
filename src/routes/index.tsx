@@ -275,7 +275,7 @@ function Index() {
               ? "Drop in your CV in any layout. It's rebuilt in a clean, structured format using your own words, so recruitment software and recruiters both read it correctly."
               : "Drop in candidate CVs in any layout. Each one is rebuilt in your standard template using the candidate's own words — review, tweak, and send PDFs or Word files to your client."}
           </p>
-          <div className="mt-10">
+          <div className="mx-auto mt-10 max-w-sm">
             <BeforeAfterSlider before={cvBefore} after={cvAfter} />
           </div>
           <div className="mt-10">
@@ -287,7 +287,7 @@ function Index() {
             <StylePicker template={template} onChange={updateTemplate} className="sm:grid-cols-4" />
             {template.audience === "recruiter" && <label className="mt-4 flex items-center gap-2 text-sm">
               <input type="checkbox" checked={template.anonymise} onChange={(e) => updateTemplate({ ...template, anonymise: e.target.checked })} className="h-4 w-4 accent-[var(--accent)]" />
-              Anonymise candidates (initials only, personal details removed)
+              Anonymise candidates — the name becomes initials and contact details (email, phone, address, links) are removed, so the client can't identify them
             </label>}
           </div>
           <p className="mt-8 text-sm font-medium">3. Add {template.audience === "candidate" ? "your CV" : "your CVs"}</p>
