@@ -10,5 +10,5 @@
 - [x] Clarified anonymise wording
 - [x] Small recruiter logo in reserved footer space in preview, PDF and Word
 - [x] Consistent line spacing and preserved paragraph gaps in preview, PDF and Word
-- [ ] Show recruiter details directly on the start page
-- [ ] Prompt for spelling review before every PDF/Word download
+- [x] Show recruiter details directly on the start page
+- [x] Prompt for spelling review before every PDF/Word download
