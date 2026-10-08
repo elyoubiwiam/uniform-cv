@@ -15,6 +15,7 @@ import { StylePicker } from "@/components/cv/StylePicker";
 import { defaultTemplate, effectiveTemplate, separateCategories, type Template } from "@/lib/cv-schema";
 import { buildDocx, buildPdf, downloadBlob, safeFileName } from "@/lib/cv-export";
 import type { Candidate } from "@/components/cv/types";
+import { OriginalView } from "@/components/cv/OriginalView";
 import { CvEditor } from "@/components/cv/CvEditor";
 import { CvPreview } from "@/components/cv/CvPreview";
 import { TemplateSettings } from "@/components/cv/TemplateSettings";
