@@ -479,15 +479,36 @@ function Index() {
                   <TabsList>
                     <TabsTrigger value="side">Preview</TabsTrigger>
                     <TabsTrigger value="edit">Edit</TabsTrigger>
+                    <TabsTrigger value="compare">Compare</TabsTrigger>
                   </TabsList>
                   <TabsContent value="side"><CvPreview cv={selected.cv} template={template} issues={liveIssues(selected.cv, selected.issues ?? [])} /></TabsContent>
                   <TabsContent value="edit"><CvEditor cv={selected.cv} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} /></TabsContent>
+                  <TabsContent value="compare" className="space-y-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original</p>
+                    <OriginalView file={selected.file} />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uniformed</p>
+                    <CvPreview cv={selected.cv} template={template} issues={liveIssues(selected.cv, selected.issues ?? [])} />
+                  </TabsContent>
+                </Tabs>
+                <Tabs value={desktopView} onValueChange={(v) => setDesktopView(v as "edit" | "compare")} className="hidden lg:block">
+                  <TabsList className="mb-4">
+                    <TabsTrigger value="edit">Edit</TabsTrigger>
+                    <TabsTrigger value="compare">Compare with original</TabsTrigger>
+                  </TabsList>
                 </Tabs>
                 <div className="hidden gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
                   <div className="max-h-[calc(100vh-180px)] overflow-y-auto pr-2">
-                    <CvEditor cv={selected.cv} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} />
+                    {desktopView === "edit" ? (
+                      <CvEditor cv={selected.cv} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} />
+                    ) : (
+                      <>
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original · {selected.file.name}</p>
+                        <OriginalView file={selected.file} />
+                      </>
+                    )}
                   </div>
                   <div className="sticky top-20 self-start">
+                    {desktopView === "compare" && <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uniformed</p>}
                     <CvPreview cv={selected.cv} template={template} issues={liveIssues(selected.cv, selected.issues ?? [])} />
                   </div>
                 </div>
