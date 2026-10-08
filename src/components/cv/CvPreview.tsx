@@ -1,14 +1,33 @@
 import type { CV, Template } from "@/lib/cv-schema";
+import type { Issue } from "@/lib/proofread";
 import { allLinks, contactLine, dateRange, linkSegments } from "@/lib/cv-export";
 
 /** On-screen preview of the export. Uses the agency's chosen accent (user data, not a theme colour). */
-export function CvPreview({ cv, template }: { cv: CV; template: Template }) {
+function Marked({ text, issues }: { text: string; issues: Issue[] }) {
+  const hits = issues.filter((i) => text.includes(i.text));
+  if (!hits.length) return <>{text}</>;
+  const re = new RegExp(`(${hits.map((h) => h.text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "g");
+  return (
+    <>
+      {text.split(re).map((part, i) => {
+        const hit = hits.find((h) => h.text === part);
+        return hit ? (
+          <span key={i} title={`${hit.reason}: "${hit.suggestion}"`} className="underline decoration-destructive decoration-wavy underline-offset-2">{part}</span>
+        ) : (
+          <span key={i}>{part}</span>
+        );
+      })}
+    </>
+  );
+}
+
+export function CvPreview({ cv, template, issues = [] }: { cv: CV; template: Template; issues?: Issue[] }) {
   const accent = { color: template.accentColor };
   const links = allLinks(cv, template);
   const L = ({ text }: { text: string }) => (
     <>
       {linkSegments(text, links).map((s, i) =>
-        s.url ? <a key={i} href={s.url} target="_blank" rel="noreferrer" className="underline" style={accent}>{s.text}</a> : <span key={i}>{s.text}</span>,
+        s.url ? <a key={i} href={s.url} target="_blank" rel="noreferrer" className="underline" style={accent}>{s.text}</a> : <Marked key={i} text={s.text} issues={issues} />,
       )}
     </>
   );
@@ -27,8 +46,8 @@ export function CvPreview({ cv, template }: { cv: CV; template: Template }) {
       <div className="h-full overflow-y-auto pr-1">
         <div className={center ? "flex flex-col-reverse items-center gap-3 text-center" : "flex items-start justify-between gap-4"}>
           <div>
-            <h2 className="text-2xl font-bold leading-tight">{cv.fullName || "Candidate"}</h2>
-            {cv.headline && <p className="text-sm" style={accent}>{cv.headline}</p>}
+            <h2 className="text-2xl font-bold leading-tight"><Marked text={cv.fullName || "Candidate"} issues={issues} /></h2>
+            {cv.headline && <p className="text-sm" style={accent}><Marked text={cv.headline} issues={issues} /></p>}
           </div>
           {template.logoDataUrl ? (
             <img src={template.logoDataUrl} alt="" className="h-8 w-auto object-contain" />
@@ -45,10 +64,10 @@ export function CvPreview({ cv, template }: { cv: CV; template: Template }) {
             {cv.experience.map((e, i) => (
               <div key={i} className="mb-3">
                 <div className="flex justify-between gap-3">
-                  <span className="font-bold">{e.title}</span>
+                  <span className="font-bold"><Marked text={e.title} issues={issues} /></span>
                   <span className="shrink-0 text-[11px] text-muted-foreground">{dateRange(e.startDate, e.endDate)}</span>
                 </div>
-                <div style={accent}>{[e.company, e.location].filter(Boolean).join(", ")}</div>
+                <div style={accent}><Marked text={[e.company, e.location].filter(Boolean).join(", ")} issues={issues} /></div>
                 <ul className="mt-1 list-disc pl-4">
                   {e.bullets.map((b, j) => <li key={j}><L text={b} /></li>)}
                 </ul>
@@ -61,10 +80,10 @@ export function CvPreview({ cv, template }: { cv: CV; template: Template }) {
             {cv.education.map((e, i) => (
               <div key={i} className="mb-2">
                 <div className="flex justify-between gap-3">
-                  <span className="font-bold">{e.degree}</span>
+                  <span className="font-bold"><Marked text={e.degree} issues={issues} /></span>
                   <span className="shrink-0 text-[11px] text-muted-foreground">{dateRange(e.startDate, e.endDate)}</span>
                 </div>
-                <div style={accent}>{e.institution}</div>
+                <div style={accent}><Marked text={e.institution} issues={issues} /></div>
                 {e.details && <p><L text={e.details} /></p>}
               </div>
             ))}

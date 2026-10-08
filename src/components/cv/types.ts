@@ -1,4 +1,5 @@
 import type { CV } from "@/lib/cv-schema";
+import type { Issue } from "@/lib/proofread";
 
 export type Status = "queued" | "reading" | "ready" | "approved" | "error";
 
@@ -11,4 +12,6 @@ export type Candidate = {
   shortenAttempt: number;
   shortening: boolean;
   error: string | null;
+  issues?: Issue[];
+  checking?: boolean;
 };

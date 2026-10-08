@@ -110,3 +110,46 @@ export const shortenCv = createServerFn({ method: "POST" })
     if (!result.ok) return result;
     return { ok: true, cv: preserveFixedFields(data.cv, result.cv) };
   });
+
+const issuesSchema = z.object({
+  issues: z.array(z.object({ text: z.string(), suggestion: z.string(), reason: z.string() })),
+});
+
+const PROOF = `You proofread a structured candidate CV for spelling and grammar mistakes. You never rewrite the CV; you only report issues.
+- "text": the exact erroneous word or short phrase, copied character-for-character from one field (keep it as short as possible but unique enough to locate).
+- "suggestion": the corrected replacement for that exact text.
+- "reason": a few words, e.g. "Spelling", "Subject–verb agreement".
+- Only flag clear errors in the CV's own language. Do not flag style, tone, names, company names, technical terms, acronyms, or date formats.
+- Return an empty list if there are no errors.`;
+
+export type CheckResult = { ok: true; issues: { text: string; suggestion: string; reason: string }[] } | { ok: false; error: string };
+
+export const checkCv = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ cv: cvSchema }).parse(d))
+  .handler(async ({ data }): Promise<CheckResult> => {
+    const { streamText, Output } = await import("ai");
+    const { createGatewayResponsesModel } = await import("./ai-gateway.server");
+    const { hyperlinks: _h, ...cv } = data.cv;
+    try {
+      const result = streamText({
+        model: createGatewayResponsesModel(),
+        instructions: PROOF,
+        messages: [{ role: "user", content: [{ type: "text", text: `CV JSON:\n${JSON.stringify(cv)}` }] }],
+        output: Output.object({ schema: issuesSchema }),
+        providerOptions: {
+          openai: { forceReasoning: true, reasoningEffort: "low", reasoningSummary: "auto", store: false, include: ["reasoning.encrypted_content"] },
+        },
+      });
+      const out = await result.output;
+      const all = JSON.stringify(cv);
+      const issues = out.issues.filter((i) => i.text && i.text !== i.suggestion && all.includes(JSON.stringify(i.text).slice(1, -1)));
+      return { ok: true, issues };
+    } catch (err) {
+      const status = (err as { statusCode?: number })?.statusCode;
+      console.error("Proofread failed", status, err);
+      if (status === 402) return { ok: false, error: "AI credits are used up. Add credits in Settings → Plans & credits." };
+      if (status === 429) return { ok: false, error: "Too many requests right now. Wait a moment and retry." };
+      if (status === 403) return { ok: false, error: "AI access is blocked for this workspace." };
+      return { ok: false, error: "Couldn't check this CV. Please retry." };
+    }
+  });
