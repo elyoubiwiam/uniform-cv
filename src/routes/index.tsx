@@ -18,6 +18,7 @@ import type { Candidate } from "@/components/cv/types";
 import { OriginalView } from "@/components/cv/OriginalView";
 import { CvEditor } from "@/components/cv/CvEditor";
 import { CvPreview } from "@/components/cv/CvPreview";
+import { PdfPageCount } from "@/components/cv/PdfPageCount";
 import { RecruiterDetails } from "@/components/cv/RecruiterDetails";
 import { downloadReviewIds } from "@/lib/download-review";
 import { Button } from "@/components/ui/button";
@@ -489,7 +490,7 @@ function Index() {
                   <TabsContent value="compare" className="space-y-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original</p>
                     <OriginalView file={selected.file} />
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uniformed</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uniformed<PdfPageCount cv={selected.cv} template={template} /></p>
                     <CvPreview cv={selected.cv} template={template} issues={liveIssues(selected.cv, selected.issues ?? [])} />
                   </TabsContent>
                 </Tabs>
@@ -511,7 +512,7 @@ function Index() {
                     )}
                   </div>
                   <div className="sticky top-20 self-start">
-                    {desktopView === "compare" && <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uniformed</p>}
+                    {desktopView === "compare" && <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uniformed<PdfPageCount cv={selected.cv} template={template} /></p>}
                     <CvPreview cv={selected.cv} template={template} issues={liveIssues(selected.cv, selected.issues ?? [])} />
                   </div>
                 </div>
