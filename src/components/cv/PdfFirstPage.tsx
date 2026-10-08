@@ -27,7 +27,7 @@ export function PdfFirstPage({ source, loadingLabel }: { source: Blob; loadingLa
       try {
         const pdf = await task.promise;
         if (cancelled) {
-          await pdf.destroy();
+          await task.destroy();
           return;
         }
         documentRef.current = pdf;
@@ -40,8 +40,8 @@ export function PdfFirstPage({ source, loadingLabel }: { source: Blob; loadingLa
       cancelled = true;
       const document = documentRef.current;
       documentRef.current = null;
-      if (document) void document.destroy();
-      else if (loadingTask) void loadingTask.destroy();
+      if (document) void document.cleanup();
+      if (loadingTask) void loadingTask.destroy();
     };
   }, [source]);
 
