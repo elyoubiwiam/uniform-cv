@@ -11,6 +11,16 @@ describe("separateCategories", () => {
     const cv = separateCategories({ ...base, skills: ["SQL", "Hobbies: Pilates"] });
     expect(cv.interests).toEqual(["Pilates"]);
   });
+  it("separates unlabelled hobbies from professional skills", () => {
+    const cv = separateCategories({ ...base, skills: ["SEO", "React", "Volleyball", "Dance", "Photography"] });
+    expect(cv.skills).toEqual(["SEO", "React"]);
+    expect(cv.interests).toEqual(["Volleyball", "Dance", "Photography"]);
+  });
+  it("separates hobbies when the reader returns a mixed item", () => {
+    const cv = separateCategories({ ...base, skills: ["SQL, Travel, Reading"] });
+    expect(cv.skills).toEqual(["SQL"]);
+    expect(cv.interests).toEqual(["Travel", "Reading"]);
+  });
 });
 import { tidySpaces } from "./reflow";
 describe("tidySpaces", () => {
