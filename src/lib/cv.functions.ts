@@ -31,6 +31,7 @@ ANONYMISE MODE (overrides format-only for personal data only): you MAY modify co
 - email, phone: null. links: [] . Remove personal profile/social hyperlinks.
 - location: city/region/country at most, never a street address.
 - Remove the candidate's name, date of birth, age, gender, nationality, marital status, photo references, ID numbers and home address wherever they appear in any text.
+- After removing information, re-read every affected sentence and repair it so it stays grammatically and syntactically correct: capitalise the new first word of a sentence (e.g. "I'm 24 years old, and open to…" → "Open to…"), remove dangling conjunctions, commas and connectors left behind, and fix pronoun/verb agreement only where the removal broke it. Change no other words.
 - Keep everything else verbatim.`;
 
 const SHORTEN = `You shorten a structured candidate CV for a recruitment agency.
@@ -109,7 +110,9 @@ export const extractCv = createServerFn({ method: "POST" })
               { type: "file", filename: data.filename, data: data.data, mediaType: data.mediaType ?? "image/jpeg" },
             ]
           : [{ type: "text", text: `CV file: ${data.filename}${links}\n\n${data.data}` }];
-    return runCv(BASE + (data.anonymise ? ANON : ""), content);
+    const result = await runCv(BASE + (data.anonymise ? ANON : ""), content);
+    if (data.anonymise && result.ok) return { ok: true, cv: tidyAnonymisedCv(result.cv) };
+    return result;
   });
 
 export const shortenCv = createServerFn({ method: "POST" })
