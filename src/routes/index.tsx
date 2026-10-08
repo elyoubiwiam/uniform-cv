@@ -115,6 +115,7 @@ function Index() {
   const [exporting, setExporting] = useState(false);
   const [downloadRequest, setDownloadRequest] = useState<{ kind: "pdf" | "docx"; ids: string[] } | null>(null);
   const [reviewingDownloads, setReviewingDownloads] = useState(false);
+  const spellCheckedIds = useRef<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
   const running = useRef(new Set<string>());
   const templateRef = useRef(template);
