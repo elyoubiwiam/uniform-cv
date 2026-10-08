@@ -1,5 +1,6 @@
 import { consultantLine, effectiveTemplate, footerLines, type CV, type Template } from "./cv-schema";
 import { footerLogoSize } from "./cv-footer";
+import { cvParagraphs, cvSpacing } from "./cv-layout";
 
 function hexToRgb(hex: string): [number, number, number] {
   const m = hex.replace("#", "").match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
@@ -105,9 +106,12 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
     doc.setFont(F, opts.bold ? "bold" : "normal");
     doc.setFontSize(size);
     doc.setTextColor(...(opts.color ?? ink));
-    const lines = doc.splitTextToSize(str, CW - (opts.indent ?? 0)) as string[];
-    const lh = size * 1.35;
-    for (const line of lines) {
+    const paragraphs = cvParagraphs(str);
+    const lh = size * cvSpacing.lineHeight;
+    for (const [paragraphIndex, paragraph] of paragraphs.entries()) {
+      if (paragraphIndex > 0) y += cvSpacing.paragraphGap;
+      const lines = paragraph.split("\n").flatMap((line) => doc.splitTextToSize(line, CW - (opts.indent ?? 0)) as string[]);
+      for (const line of lines) {
       ensure(lh);
       const x0 = opts.center ? M + (CW - doc.getTextWidth(line)) / 2 : M + (opts.indent ?? 0);
       doc.text(line, x0, y + size);
@@ -129,6 +133,7 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
         doc.link(x, y, w, lh, { url: l.url });
       }
       y += lh;
+      }
     }
     y += opts.gap ?? 0;
   };
@@ -172,8 +177,8 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
   };
 
   if (cv.summary) {
-    section("Profile", Math.min(4, (doc.splitTextToSize(cv.summary, CW) as string[]).length) * 13.5);
-    text(cv.summary, 10, { gap: 4 });
+    section("Profile", Math.min(4, (doc.splitTextToSize(cv.summary, CW) as string[]).length) * 10 * cvSpacing.lineHeight);
+    text(cv.summary, 10, { gap: cvSpacing.paragraphGap });
   }
 
   if (cv.experience.length) {
@@ -196,12 +201,12 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
       if (titleLines.length > 1) text(titleLines.slice(1).join(" "), 11, { bold: true });
       text([e.company, e.location].filter(Boolean).join(", "), 10, { color: accent, gap: 2 });
       for (const b of e.bullets) {
-        ensure(14);
+        ensure(10 * cvSpacing.lineHeight);
         doc.setFillColor(...grey);
         doc.circle(M + 4, y + 6.5, 1.3, "F");
-        text(b, 10, { indent: 12 });
+        text(b, 10, { indent: 12, gap: cvSpacing.bulletGap });
       }
-      y += 8;
+      y += cvSpacing.entryGap;
     }
   }
 
@@ -223,14 +228,14 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
       y += 15;
       text(ed.institution, 10, { color: accent });
       if (ed.details) text(ed.details, 10);
-      y += 6;
+      y += cvSpacing.entryGap;
     }
   }
 
   const listSection = (title: string, items: string[]) => {
     if (!items.length) return;
     section(title, 28);
-    text(items.join("  ·  "), 10, { gap: 4 });
+    text(items.join("  ·  "), 10, { gap: cvSpacing.paragraphGap });
   };
   listSection("Skills", cv.skills);
   listSection("Languages", cv.languages);
@@ -341,7 +346,13 @@ export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
         children: [new TextRun({ text: title.toUpperCase(), bold: true, size: 20, color: accent, characterSpacing: 20, font })],
       }),
     );
-  const body = (text: string) => new Paragraph({ spacing: { after: 80 }, children: runs(text, { size: 20 }) });
+  const paragraphRuns = (text: string) => text.split("\n").flatMap((line, index) => [
+    ...(index ? [new TextRun({ break: 1 })] : []), ...runs(line, { size: 20 }),
+  ]);
+  const body = (text: string) => cvParagraphs(text).map((paragraph) => new Paragraph({
+    spacing: { after: cvSpacing.paragraphGap * 20 },
+    children: paragraphRuns(paragraph),
+  }));
   const titleRow = (title: string, dates: string) =>
     new Paragraph({
       tabStops: [{ type: TabStopType.RIGHT, position: 9000 }],
@@ -355,7 +366,7 @@ export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
 
   if (cv.summary) {
     section("Profile");
-    children.push(body(cv.summary));
+    children.push(...body(cv.summary));
   }
   if (cv.experience.length) {
     section("Experience");
@@ -368,8 +379,12 @@ export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
           children: [new TextRun({ text: [e.company, e.location].filter(Boolean).join(", "), size: 20, color: accent, font })],
         }),
       );
-      for (const b of e.bullets)
-        children.push(new Paragraph({ bullet: { level: 0 }, spacing: { after: 40 }, children: runs(b, { size: 20 }) }));
+      for (const b of e.bullets) {
+        cvParagraphs(b).forEach((paragraph, index) => children.push(new Paragraph({
+          ...(index === 0 ? { bullet: { level: 0 } } : { indent: { left: 720 } }),
+          spacing: { after: cvSpacing.bulletGap * 20 }, children: paragraphRuns(paragraph),
+        })));
+      }
     }
   }
   if (cv.education.length) {
@@ -377,7 +392,7 @@ export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
     for (const ed of cv.education) {
       children.push(titleRow(ed.degree, dateRange(ed.startDate, ed.endDate)));
       children.push(new Paragraph({ children: [new TextRun({ text: ed.institution, size: 20, color: accent, font })] }));
-      if (ed.details) children.push(body(ed.details));
+      if (ed.details) children.push(...body(ed.details));
     }
   }
   for (const [title, items] of [
@@ -388,11 +403,12 @@ export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
   ] as const) {
     if (!items.length) continue;
     section(title);
-    children.push(body(items.join("  ·  ")));
+    children.push(...body(items.join("  ·  ")));
   }
 
   const [footerLeft, footerSecond] = footerLines(t);
   const doc = new Document({
+    styles: { default: { document: { paragraph: { spacing: { line: cvSpacing.lineHeight * 240, after: 60 } } } } },
     sections: [
       {
         properties: { page: { margin: { top: 1000, bottom: t.logoDataUrl ? 1600 : 1000, left: 1000, right: 1000, footer: 400 } } },
