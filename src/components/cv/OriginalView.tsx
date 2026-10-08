@@ -32,7 +32,7 @@ export function OriginalView({ file }: { file: File }) {
             const canvas = document.createElement("canvas");
             canvas.width = viewport.width;
             canvas.height = viewport.height;
-            await page.render({ canvasContext: canvas.getContext("2d")!, viewport }).promise;
+            await page.render({ canvas, canvasContext: canvas.getContext("2d")!, viewport }).promise;
             out.push(canvas.toDataURL("image/png"));
           }
           if (!cancelled) setPages(out);
