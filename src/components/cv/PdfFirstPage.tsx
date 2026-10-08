@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { PDFDocumentProxy } from "pdfjs-dist";
+import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist";
 import { ChevronLeft, ChevronRight, Minus, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -12,6 +12,7 @@ export function PdfFirstPage({ source, loadingLabel }: { source: Blob; loadingLa
 
   useEffect(() => {
     let cancelled = false;
+    let loadingTask: PDFDocumentLoadingTask | null = null;
     setPage(null);
     setPageNumber(1);
     setPageCount(0);
@@ -22,6 +23,7 @@ export function PdfFirstPage({ source, loadingLabel }: { source: Blob; loadingLa
       ]);
       pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
       const task = pdfjs.getDocument({ data: new Uint8Array(await source.arrayBuffer()) });
+      loadingTask = task;
       try {
         const pdf = await task.promise;
         if (cancelled) {
@@ -39,7 +41,7 @@ export function PdfFirstPage({ source, loadingLabel }: { source: Blob; loadingLa
       const document = documentRef.current;
       documentRef.current = null;
       if (document) void document.destroy();
-      else void task.destroy();
+      else if (loadingTask) void loadingTask.destroy();
     };
   }, [source]);
 
