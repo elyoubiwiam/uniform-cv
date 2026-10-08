@@ -18,7 +18,6 @@ import type { Candidate } from "@/components/cv/types";
 import { OriginalView } from "@/components/cv/OriginalView";
 import { CvEditor } from "@/components/cv/CvEditor";
 import { CvPreview } from "@/components/cv/CvPreview";
-import { TemplateSettings } from "@/components/cv/TemplateSettings";
 import { RecruiterDetails } from "@/components/cv/RecruiterDetails";
 import { downloadReviewIds } from "@/lib/download-review";
 import { Button } from "@/components/ui/button";
@@ -282,8 +281,10 @@ function Index() {
       <header className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-6 py-3">
           <div className="flex min-w-0 items-center gap-3">
-            <img src={uniformIcon} alt="" aria-hidden className="h-8 w-8 shrink-0" width={32} height={32} />
-            <span className="font-display text-2xl font-semibold leading-none tracking-tight">Uniform<span className="text-accent">.</span></span>
+            <Link to="/" className="flex items-center gap-3" aria-label="Uniform — back to homepage">
+              <img src={uniformIcon} alt="" aria-hidden className="h-8 w-8 shrink-0" width={32} height={32} />
+              <span className="font-display text-2xl font-semibold leading-none tracking-tight">Uniform<span className="text-accent">.</span></span>
+            </Link>
             <span className="hidden text-sm leading-none text-muted-foreground md:inline">{template.audience === "candidate" ? "Uniform your CV" : "CV formatting for recruiters and candidates"}</span>
           </div>
 
