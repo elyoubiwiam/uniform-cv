@@ -21,10 +21,25 @@ export function reflow(text: string): string {
     .join("\n\n");
 }
 
+/** Remove stray spaces: doubled spaces between words and spaces before a full stop/comma ending a phrase. */
+export function tidySpaces(text: string): string {
+  return text
+    .replace(/[ \t\u00a0]{2,}/g, " ")
+    .replace(/[ \t\u00a0]+([.,;])(?=\s|$)/g, "$1")
+    .replace(/[ \t]+$/gm, "");
+}
+
+const tidy = (s: string | null) => (s ? tidySpaces(s) : s);
+
 export function reflowCv(cv: CV): CV {
   return {
     ...cv,
-    summary: cv.summary ? reflow(cv.summary) : cv.summary,
-    experience: cv.experience.map((r) => ({ ...r, bullets: r.bullets.map(reflow) })),
+    headline: tidy(cv.headline),
+    summary: cv.summary ? tidySpaces(reflow(cv.summary)) : cv.summary,
+    experience: cv.experience.map((r) => ({ ...r, bullets: r.bullets.map((b) => tidySpaces(reflow(b))) })),
+    education: cv.education.map((e) => ({ ...e, details: tidy(e.details) })),
+    skills: cv.skills.map(tidySpaces),
+    interests: (cv.interests ?? []).map(tidySpaces),
+    certifications: cv.certifications.map(tidySpaces),
   };
 }

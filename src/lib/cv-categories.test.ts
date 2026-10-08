@@ -12,3 +12,11 @@ describe("separateCategories", () => {
     expect(cv.interests).toEqual(["Pilates"]);
   });
 });
+import { tidySpaces } from "./reflow";
+describe("tidySpaces", () => {
+  it("removes space before final point and doubled spaces", () => {
+    expect(tidySpaces("Led  the team .")).toBe("Led the team.");
+    expect(tidySpaces("Built apps , fast")).toBe("Built apps, fast");
+  });
+  it("keeps .NET", () => expect(tidySpaces("C# and .NET")).toBe("C# and .NET"));
+});
