@@ -3,7 +3,7 @@ import type { CV, Template } from "./cv-schema";
 function hexToRgb(hex: string): [number, number, number] {
   const m = hex.replace("#", "").match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
   if (!m) return [194, 81, 43];
-  return [parseInt(m[1]!, 16), parseInt(m[2]!, 16), parseInt(m[3]!, 16)];
+  return [parseInt(m[1] ?? "00", 16), parseInt(m[2] ?? "00", 16), parseInt(m[3] ?? "00", 16)];
 }
 
 export function dateRange(a: string | null, b: string | null) {
@@ -20,6 +20,12 @@ export function normUrl(u: string) {
   if (/^(https?:|mailto:|tel:)/i.test(v)) return v;
   if (/^[^\s@]+@[^\s@]+$/.test(v)) return `mailto:${v}`;
   return `https://${v}`;
+}
+
+export function headerLinks(cv: CV, t: Template) {
+  if (t.hideContactDetails || t.anonymise) return [];
+  return cv.hyperlinks.filter((h) => h.text.trim() && h.url.trim())
+    .map((h) => ({ text: h.text, url: normUrl(h.url) }));
 }
 
 export function allLinks(cv: CV, t: Template) {
@@ -78,7 +84,7 @@ export async function buildPdf(cv: CV, t: Template): Promise<Blob> {
     }
   };
 
-  const text = (str: string, size: number, opts: { bold?: boolean; color?: [number, number, number]; indent?: number; gap?: number; center?: boolean } = {}) => {
+  const text = (str: string, size: number, opts: { bold?: boolean; color?: [number, number, number]; indent?: number; gap?: number; center?: boolean; url?: string } = {}) => {
     doc.setFont(F, opts.bold ? "bold" : "normal");
     doc.setFontSize(size);
     doc.setTextColor(...(opts.color ?? ink));
@@ -88,6 +94,13 @@ export async function buildPdf(cv: CV, t: Template): Promise<Blob> {
       ensure(lh);
       const x0 = opts.center ? M + (CW - doc.getTextWidth(line)) / 2 : M + (opts.indent ?? 0);
       doc.text(line, x0, y + size);
+      if (opts.url) {
+        const width = doc.getTextWidth(line);
+        doc.setDrawColor(...accent);
+        doc.setLineWidth(0.5);
+        doc.line(x0, y + size + 1.5, x0 + width, y + size + 1.5);
+        doc.link(x0, y, width, lh, { url: opts.url });
+      }
       for (const l of links) {
         const idx = line.indexOf(l.text);
         if (idx < 0) continue;
@@ -125,6 +138,7 @@ export async function buildPdf(cv: CV, t: Template): Promise<Blob> {
   if (cv.headline) text(cv.headline, 12, { color: accent, gap: 2, center });
   const contact = contactLine(cv, t);
   if (contact) text(contact, 9, { color: grey, center });
+  for (const link of headerLinks(cv, t)) text(link.text, 9, { color: accent, center, url: link.url });
   y += 8;
   doc.setDrawColor(...accent);
   doc.setLineWidth(1.5);
@@ -244,6 +258,7 @@ export async function buildDocx(cv: CV, t: Template): Promise<Blob> {
   const children: InstanceType<typeof Paragraph>[] = [];
 
   if (t.logoDataUrl) {
+    const logoDataUrl = t.logoDataUrl;
     try {
       const [meta = "", b64 = ""] = t.logoDataUrl.split(",");
       const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
@@ -251,7 +266,7 @@ export async function buildDocx(cv: CV, t: Template): Promise<Blob> {
         const i = new Image();
         i.onload = () => res(i);
         i.onerror = rej;
-        i.src = t.logoDataUrl!;
+        i.src = logoDataUrl;
       });
       const h = 36;
       children.push(
@@ -281,14 +296,23 @@ export async function buildDocx(cv: CV, t: Template): Promise<Blob> {
   children.push(new Paragraph({ alignment: headAlign, children: [new TextRun({ text: cv.fullName || "Candidate", bold: true, size: 48, font })] }));
   if (cv.headline) children.push(new Paragraph({ alignment: headAlign, children: [new TextRun({ text: cv.headline, size: 24, color: accent, font })] }));
   const contact = contactLine(cv, t);
+  const candidateLinks = headerLinks(cv, t);
   children.push(
     new Paragraph({
-      spacing: { after: 200 },
+      spacing: { after: candidateLinks.length ? 60 : 200 },
+      keepNext: candidateLinks.length > 0,
       alignment: headAlign,
-      border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: accent, space: 6 } },
+      ...(!candidateLinks.length ? { border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: accent, space: 6 } } } : {}),
       children: runs(contact, { size: 18, color: "646C78" }),
     }),
   );
+  candidateLinks.forEach((link, index) => children.push(new Paragraph({
+    alignment: headAlign,
+    keepNext: index < candidateLinks.length - 1,
+    spacing: { after: index === candidateLinks.length - 1 ? 200 : 60 },
+    ...(index === candidateLinks.length - 1 ? { border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: accent, space: 6 } } } : {}),
+    children: [new ExternalHyperlink({ link: link.url, children: [new TextRun({ text: link.text, size: 18, color: accent, underline: {}, font })] })],
+  })));
 
   const section = (title: string) =>
     children.push(

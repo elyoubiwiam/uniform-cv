@@ -58,6 +58,14 @@ async function fileToPayload(file: File): Promise<{ kind: "pdf" | "text"; data: 
   const name = file.name.toLowerCase();
   if (file.type === "application/pdf" || name.endsWith(".pdf")) {
     const ab = await file.arrayBuffer();
+    // Text-layer PDFs avoid a second document/OCR read by the model. Scans retain the original path.
+    try {
+      const { readPdfText } = await import("@/lib/pdf-text");
+      const parsed = await readPdfText(ab.slice(0));
+      if (parsed) return { kind: "text", data: parsed.text, hyperlinks: parsed.hyperlinks };
+    } catch {
+      // Damaged or unsupported text layers must never prevent the original PDF from being read.
+    }
     const hyperlinks = await pdfLinks(ab.slice(0));
     const buf = new Uint8Array(ab);
     let bin = "";
@@ -67,8 +75,10 @@ async function fileToPayload(file: File): Promise<{ kind: "pdf" | "text"; data: 
   if (name.endsWith(".docx")) {
     const mammoth = await import("mammoth");
     const ab = await file.arrayBuffer();
-    const { value } = await mammoth.extractRawText({ arrayBuffer: ab });
-    const { value: html } = await mammoth.convertToHtml({ arrayBuffer: ab });
+    const [{ value }, { value: html }] = await Promise.all([
+      mammoth.extractRawText({ arrayBuffer: ab }),
+      mammoth.convertToHtml({ arrayBuffer: ab }),
+    ]);
     const anchors = Array.from(new DOMParser().parseFromString(html, "text/html").querySelectorAll("a[href]"));
     const hyperlinks = anchors
       .map((a) => `${a.textContent?.trim() ?? ""} -> ${a.getAttribute("href")}`)
