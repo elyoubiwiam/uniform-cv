@@ -1,4 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import cvBefore from "@/assets/cv-before.jpg";
+import cvAfter from "@/assets/cv-after.jpg";
+import { AudiencePicker } from "@/components/cv/AudiencePicker";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Download, FileText, Loader2, RotateCw, Scissors, RefreshCw, Undo2, SpellCheck, EyeOff, Trash2, Upload, AlertCircle, FileDown } from "lucide-react";
@@ -6,7 +9,7 @@ import { toast } from "sonner";
 import { checkCv, extractCv, shortenCv } from "@/lib/cv.functions";
 import { liveIssues } from "@/lib/proofread";
 import { StylePicker } from "@/components/cv/StylePicker";
-import { defaultTemplate, type CV, type Template } from "@/lib/cv-schema";
+import { defaultTemplate, effectiveTemplate, type CV, type Template } from "@/lib/cv-schema";
 import { buildDocx, buildPdf, downloadBlob, safeFileName } from "@/lib/cv-export";
 import type { Candidate } from "@/components/cv/types";
 import { CvEditor } from "@/components/cv/CvEditor";
@@ -54,8 +57,28 @@ async function pdfLinks(buf: ArrayBuffer): Promise<string[]> {
   }
 }
 
-async function fileToPayload(file: File): Promise<{ kind: "pdf" | "text"; data: string; hyperlinks: string[] }> {
+type ImageType = "image/png" | "image/jpeg" | "image/webp";
+type Payload = { kind: "pdf" | "text" | "image"; data: string; hyperlinks: string[]; mediaType?: ImageType };
+
+export function imageType(name: string): ImageType | null {
+  const n = name.toLowerCase();
+  if (n.endsWith(".png")) return "image/png";
+  if (/\.(jpe?g)$/.test(n)) return "image/jpeg";
+  if (n.endsWith(".webp")) return "image/webp";
+  return null;
+}
+
+function toBase64(ab: ArrayBuffer) {
+  const buf = new Uint8Array(ab);
+  let bin = "";
+  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+async function fileToPayload(file: File): Promise<Payload> {
   const name = file.name.toLowerCase();
+  const img = imageType(name);
+  if (img) return { kind: "image", data: toBase64(await file.arrayBuffer()), hyperlinks: [], mediaType: img };
   if (file.type === "application/pdf" || name.endsWith(".pdf")) {
     const ab = await file.arrayBuffer();
     // Text-layer PDFs avoid a second document/OCR read by the model. Scans retain the original path.
@@ -67,10 +90,7 @@ async function fileToPayload(file: File): Promise<{ kind: "pdf" | "text"; data: 
       // Damaged or unsupported text layers must never prevent the original PDF from being read.
     }
     const hyperlinks = await pdfLinks(ab.slice(0));
-    const buf = new Uint8Array(ab);
-    let bin = "";
-    for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
-    return { kind: "pdf", data: btoa(bin), hyperlinks };
+    return { kind: "pdf", data: toBase64(ab), hyperlinks };
   }
   if (name.endsWith(".docx")) {
     const mammoth = await import("mammoth");
@@ -119,7 +139,7 @@ function Index() {
   const runShorten = async (c: Candidate) => {
     if (!c.originalCv) return;
     patch(c.id, { shortening: true });
-    const res = await shorten({ data: { cv: c.originalCv, anonymise: template.anonymise, attempt: c.shortenAttempt } }).catch(() => null);
+    const res = await shorten({ data: { cv: c.originalCv, anonymise: effectiveTemplate(template).anonymise, attempt: c.shortenAttempt } }).catch(() => null);
     if (res?.ok) patch(c.id, { cv: res.cv, shortening: false, shortenAttempt: c.shortenAttempt + 1 });
     else {
       patch(c.id, { shortening: false });
@@ -153,8 +173,8 @@ function Index() {
       try {
         const payload = await fileToPayload(c.file);
         if (!payload.data.trim()) throw new Error("This file has no readable text.");
-        const res = await extract({ data: { filename: c.file.name, ...payload, anonymise: templateRef.current.anonymise } });
-        if (res.ok) patch(c.id, { status: "ready", cv: res.cv, originalCv: res.cv, shortenAttempt: 0 });
+        const res = await extract({ data: { filename: c.file.name, ...payload, anonymise: effectiveTemplate(templateRef.current).anonymise } });
+        if (res.ok) patch(c.id, { status: "ready", cv: res.cv, originalCv: res.cv, shortenAttempt: 0, scanned: payload.kind !== "text" });
         else patch(c.id, { status: "error", error: res.error });
       } catch (e) {
         patch(c.id, { status: "error", error: e instanceof Error ? e.message : "Couldn't read this file." });
@@ -175,8 +195,8 @@ function Index() {
   const addFiles = (files: FileList | File[]) => {
     const next: Candidate[] = [];
     for (const f of Array.from(files)) {
-      if (!/\.(pdf|docx|txt)$/i.test(f.name)) {
-        toast.error(`${f.name}: only PDF, Word (.docx) or text files.`);
+      if (!/\.(pdf|docx|txt|png|jpe?g|webp)$/i.test(f.name)) {
+        toast.error(`${f.name}: only PDF, Word (.docx), text or image (JPG, PNG, WEBP) files.`);
         continue;
       }
       if (f.size > MAX_BYTES) {
@@ -234,9 +254,11 @@ function Index() {
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-6 py-3">
           <div className="flex items-baseline gap-3">
             <span className="font-display text-2xl font-semibold tracking-tight">Uniform<span className="text-accent">.</span></span>
-            <span className="hidden text-sm text-muted-foreground sm:inline">CV formatting for recruiters</span>
+            <span className="hidden text-sm text-muted-foreground md:inline">{template.audience === "candidate" ? "Structure your CV" : "CV formatting for recruiters"}</span>
           </div>
           <div className="flex items-center gap-2">
+            <Link to="/pricing" className="hidden px-2 text-sm text-muted-foreground hover:text-foreground sm:inline">Pricing</Link>
+            <Link to="/privacy" className="hidden px-2 text-sm text-muted-foreground hover:text-foreground sm:inline">Your data</Link>
             <TemplateSettings template={template} onChange={updateTemplate} />
             <Button size="sm" variant="outline" disabled={!done.length || exporting} onClick={() => exportBatch("docx")}>
               <FileDown className="h-4 w-4" /> Word
@@ -253,20 +275,35 @@ function Index() {
         <main className="mx-auto max-w-3xl px-6 py-20">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">Format only — no rewriting</p>
           <h1 className="mt-3 font-display text-5xl font-medium leading-[1.05] tracking-tight sm:text-6xl">
-            A stack of CVs in.<br />One clean format out.
+            {template.audience === "candidate" ? <>Your CV in.<br />A structure robots can read out.</> : <>A stack of CVs in.<br />One clean format out.</>}
           </h1>
           <p className="mt-5 max-w-xl text-lg text-muted-foreground">
-            Drop in candidate CVs in any layout. Each one is rebuilt in your standard template using the candidate's own words — review, tweak, and send PDFs or Word files to your client.
+            {template.audience === "candidate"
+              ? "Drop in your CV in any layout. It's rebuilt in a clean, structured format using your own words, so recruitment software and recruiters both read it correctly."
+              : "Drop in candidate CVs in any layout. Each one is rebuilt in your standard template using the candidate's own words — review, tweak, and send PDFs or Word files to your client."}
           </p>
+          <figure className="mt-10 grid grid-cols-2 gap-4 rounded-md border border-border bg-card p-4">
+            {[["Before", cvBefore, "A cluttered two-column CV with icons and coloured boxes"], ["After Uniform", cvAfter, "The same CV in a clean single-column structured layout"]].map(([label, src, alt]) => (
+              <div key={label}>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-accent">{label}</p>
+                <img src={src} alt={alt} width={768} height={1024} className="aspect-[3/4] w-full rounded-sm object-cover" />
+              </div>
+            ))}
+            <figcaption className="col-span-2 text-center text-sm text-muted-foreground">Same words. One structure robots and recruiters both read. <span className="text-xs">(Fictional sample.)</span></figcaption>
+          </figure>
           <div className="mt-10">
-            <p className="mb-2 text-sm font-medium">1. Pick a style to start from <span className="text-muted-foreground">(you can fine-tune it under Template)</span></p>
+            <p className="mb-2 text-sm font-medium">1. Who's using Uniform?</p>
+            <AudiencePicker template={template} onChange={updateTemplate} />
+          </div>
+          <div className="mt-6">
+            <p className="mb-2 text-sm font-medium">2. Pick a style to start from <span className="text-muted-foreground">(fine-tune it under Template{template.audience === "recruiter" ? ", where you can add your logo and consultant details" : ""})</span></p>
             <StylePicker template={template} onChange={updateTemplate} className="sm:grid-cols-4" />
-            <label className="mt-4 flex items-center gap-2 text-sm">
+            {template.audience === "recruiter" && <label className="mt-4 flex items-center gap-2 text-sm">
               <input type="checkbox" checked={template.anonymise} onChange={(e) => updateTemplate({ ...template, anonymise: e.target.checked })} className="h-4 w-4 accent-[var(--accent)]" />
               Anonymise candidates (initials only, personal details removed)
-            </label>
+            </label>}
           </div>
-          <p className="mt-8 text-sm font-medium">2. Add your CVs</p>
+          <p className="mt-8 text-sm font-medium">3. Add {template.audience === "candidate" ? "your CV" : "your CVs"}</p>
           <DropZone dragging={dragging} setDragging={setDragging} onFiles={addFiles} inputRef={inputRef} big />
           <ol className="mt-10 grid gap-4 text-sm sm:grid-cols-3">
             {["Upload PDFs or Word files in bulk", "Review each CV side by side", "Download each as PDF or Word"].map((s, i) => (
@@ -283,6 +320,14 @@ function Index() {
               roles, dates and contact details — and it only reads them correctly when a CV is cleanly structured.
               A great CV in a messy layout can get misread or overlooked. Uniform exists for exactly that: it
               rebuilds every CV into one structured format that robots and recruiters both read accurately.
+            </p>
+          </div>
+          <div className="mt-6 rounded-md border border-border p-6">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">Your data</p>
+            <p className="mt-3 max-w-xl text-sm text-muted-foreground">
+              CVs are sent once to our AI service to read them and are not stored on our servers. They stay in this browser tab and
+              disappear when you refresh. No accounts, no database, no training on your files. Designed with UK GDPR in mind.{" "}
+              <Link to="/privacy" className="text-foreground underline">How data is handled</Link>
             </p>
           </div>
         </main>
@@ -351,7 +396,7 @@ function Index() {
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h2 className="font-display text-3xl">{selected.cv.fullName || "Candidate"}</h2>
-                    <p className="text-sm text-muted-foreground">From {selected.file.name}{template.anonymise && <span className="ml-2 inline-flex items-center gap-1"><EyeOff className="h-3 w-3" /> Anonymised</span>}</p>
+                    <p className="text-sm text-muted-foreground">From {selected.file.name}{selected.scanned && <span className="ml-2 rounded-sm bg-accent/10 px-1.5 py-0.5 text-xs text-accent">Read from a scan — check carefully</span>}{effectiveTemplate(template).anonymise && <span className="ml-2 inline-flex items-center gap-1"><EyeOff className="h-3 w-3" /> Anonymised</span>}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" size="sm" onClick={() => exportOne(selected.cv!, "docx")}>
@@ -463,12 +508,12 @@ function DropZone({
     >
       <Upload className={cn("text-accent", big ? "h-8 w-8" : "h-5 w-5")} />
       <p className={cn("font-medium", big ? "text-lg" : "text-sm")}>{big ? "Drop CVs here or click to upload" : "Add more CVs"}</p>
-      {big && <p className="text-sm text-muted-foreground">PDF, Word (.docx) or text · up to 10 MB each · as many as you like</p>}
+      {big && <p className="text-sm text-muted-foreground">PDF, Word, text, or a photo/scan (JPG, PNG) · up to 10 MB each · as many as you like</p>}
       <input
         ref={inputRef}
         type="file"
         multiple
-        accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+        accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
         className="hidden"
         onChange={(e) => { if (e.target.files) onFiles(e.target.files); e.target.value = ""; }}
       />
