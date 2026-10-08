@@ -1,6 +1,12 @@
 # Fill the five gaps
 
-## 1. Recruiter branding in the template
+## 0. Recruiter or candidate
+- A choice on the start screen and in Template: **I'm a recruiter** / **I'm a candidate**. It's remembered in this browser.
+- Recruiter: shows the agency name, logo, consultant details, agency footer and the Anonymise switch.
+- Candidate: hides all of those. The PDF and Word downloads carry no agency branding, only the candidate's own details, style and accent colour.
+- Copy adapts slightly, e.g. "Format your CV" instead of "Format a batch of CVs".
+
+## 1. Recruiter branding in the template (recruiter mode only)
 The template already has a logo, agency name and footer note. Add:
 - Consultant name, job title, email and phone ("Presented by ..." block).
 - Agency footer: agency name, address/website, and registration line, plus page numbers.
@@ -32,4 +38,6 @@ The template already has a logo, agency name and footer note. Add:
 - `fileToPayload` gets `kind: "image"` (base64 + mediaType). `extractCv` sends `{type:"file", mediaType:"image/*"}`. The input validator enum is extended, and `accept` gets image types.
 - New routes `src/routes/privacy.tsx` and `src/routes/pricing.tsx`, each with its own head() metadata. A shared footer goes in `__root.tsx`.
 - Before/after images go in `src/assets/` via image generation. Copy follows the tool's voice memory.
-- Add tests for the consultant block staying when anonymised and for image payload detection.
+- `Template` gets `audience: "recruiter" | "candidate"`. Exports ignore agency, logo, consultant, footer and anonymise fields when it's "candidate", so branding entered earlier never leaks out.
+- Add tests: the consultant block stays when anonymised, candidate mode exports no branding, and image payloads are detected.
+- Add the new tasks to roadmap.md once building starts.
