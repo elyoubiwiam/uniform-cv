@@ -276,6 +276,15 @@ function Index() {
               </li>
             ))}
           </ol>
+          <div className="mt-12 rounded-md border border-border bg-card p-6">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">Why structure matters</p>
+            <p className="mt-3 max-w-xl text-sm text-muted-foreground">
+              Before a human reads your CV, a robot parser does. Recruitment software scans the content for skills,
+              roles, dates and contact details — and it only reads them correctly when a CV is cleanly structured.
+              A great CV in a messy layout can get misread or overlooked. Uniform exists for exactly that: it
+              rebuilds every CV into one structured format that robots and recruiters both read accurately.
+            </p>
+          </div>
         </main>
       ) : (
         <main className="mx-auto grid max-w-[1500px] gap-6 px-6 py-6 lg:grid-cols-[300px_1fr]">
