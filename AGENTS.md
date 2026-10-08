@@ -20,3 +20,4 @@
 - CV paragraph boundaries and export spacing are handled by the shared CV layout module; why: consistent readable spacing without rewriting source content.
 - Recruiter details share one form between the start page and Template settings; why: both surfaces edit the same saved template without divergent fields.
 - Every PDF/Word download uses one spelling-review dialog and shared candidate selection; why: single and batch downloads prompt consistently without automatically accepting corrections.
+- Skill separator normalization is shared by category cleanup, editor blur, preview and exports; why: comma lists and explicit groups remain consistent without rewriting terms.
