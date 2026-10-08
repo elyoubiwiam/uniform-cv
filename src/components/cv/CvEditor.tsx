@@ -1,4 +1,6 @@
 import { Check, Plus, Trash2, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { normalizeSkills } from "@/lib/cv-skills";
 import { applyFix, type Issue } from "@/lib/proofread";
 import type { CV } from "@/lib/cv-schema";
 import { Input } from "@/components/ui/input";
@@ -34,6 +36,20 @@ function Heading({ children, onAdd }: { children: React.ReactNode; onAdd?: () =>
       )}
     </div>
   );
+}
+
+function SkillsField({ skills, onChange }: { skills: string[]; onChange: (skills: string[]) => void }) {
+  const value = normalizeSkills(skills).join("\n");
+  const [draft, setDraft] = useState(value);
+  useEffect(() => { setDraft(value); }, [value]);
+  return <div className="space-y-1">
+    <Label htmlFor="cv-skills" className="text-xs text-muted-foreground">Skills</Label>
+    <Textarea id="cv-skills" rows={5} value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => {
+      const normalized = normalizeSkills([draft]);
+      setDraft(normalized.join("\n"));
+      onChange(normalized);
+    }} />
+  </div>;
 }
 
 export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onChange: (cv: CV) => void; issues?: Issue[]; onIssues?: (i: Issue[]) => void }) {
@@ -127,7 +143,7 @@ export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onCh
       })}
 
       <Heading>Skills</Heading>
-      <Field label="Skills (comma separated)" value={cv.skills.join(", ")} onChange={(v) => set("skills", list(v))} multiline />
+      <SkillsField skills={cv.skills} onChange={(skills) => set("skills", skills)} />
       <Heading>Interests & hobbies</Heading>
       <Field label="Interests & hobbies (comma separated)" value={(cv.interests ?? []).join(", ")} onChange={(v) => set("interests", list(v))} multiline />
       <Heading>Languages & certifications</Heading>

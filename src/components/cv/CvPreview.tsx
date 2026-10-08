@@ -2,6 +2,7 @@ import { consultantLine, effectiveTemplate, footerLines, type CV, type Template 
 import type { Issue } from "@/lib/proofread";
 import { allLinks, contactLine, dateRange, headerLinks, linkSegments } from "@/lib/cv-export";
 import { cvParagraphs } from "@/lib/cv-layout";
+import { normalizeSkills } from "@/lib/cv-skills";
 
 /** On-screen preview of the export. Uses the agency's chosen accent (user data, not a theme colour). */
 function Marked({ text, issues }: { text: string; issues: Issue[] }) {
@@ -96,9 +97,9 @@ export function CvPreview({ cv, template: raw, issues = [] }: { cv: CV; template
             ))}
           </Section>
         )}
+        {cv.skills.length > 0 && <Section title="Skills"><Paragraphs text={normalizeSkills(cv.skills).join("\n\n")} /></Section>}
         {(
           [
-            ["Skills", cv.skills],
             ["Languages", cv.languages],
             ["Certifications", cv.certifications],
             ["Interests", cv.interests ?? []],

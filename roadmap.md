@@ -10,3 +10,7 @@
 - [x] Clarified anonymise wording
 - [x] Small recruiter logo in reserved footer space in preview, PDF and Word
 - [x] Consistent line spacing and preserved paragraph gaps in preview, PDF and Word
+- [x] Show recruiter details directly on the start page
+- [x] Prompt for spelling review before every PDF/Word download
+- [x] Remove CV page numbers from preview and downloads
+- [x] Use comma-separated skills, preserving optional category groups during edits and exports

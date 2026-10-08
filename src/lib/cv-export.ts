@@ -1,6 +1,7 @@
 import { consultantLine, effectiveTemplate, footerLines, type CV, type Template } from "./cv-schema";
 import { footerLogoSize } from "./cv-footer";
 import { cvParagraphs, cvSpacing } from "./cv-layout";
+import { normalizeSkills } from "./cv-skills";
 
 function hexToRgb(hex: string): [number, number, number] {
   const m = hex.replace("#", "").match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
@@ -89,7 +90,7 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
   doc.setFont(F, "normal");
   doc.setFontSize(8);
   const footerTextX = M + (logo ? logo.width + 12 : 0);
-  const footerTextWidth = CW - (footerTextX - M) - 42;
+  const footerTextWidth = CW - (footerTextX - M);
   const footerText = footerLines(t).filter(Boolean).flatMap((line) => doc.splitTextToSize(line, footerTextWidth) as string[]);
   const footerHeight = Math.max(logo?.height ?? 0, footerText.length * 11, 11);
   const footerTop = H - 23 - footerHeight;
@@ -237,7 +238,10 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
     section(title, 28);
     text(items.join("  ·  "), 10, { gap: cvSpacing.paragraphGap });
   };
-  listSection("Skills", cv.skills);
+  if (cv.skills.length) {
+    section("Skills", 28);
+    text(normalizeSkills(cv.skills).join("\n\n"), 10, { gap: cvSpacing.paragraphGap });
+  }
   listSection("Languages", cv.languages);
   listSection("Certifications", cv.certifications);
   listSection("Interests", cv.interests ?? []);
@@ -251,7 +255,6 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
     doc.setTextColor(...grey);
     if (logo && t.logoDataUrl) doc.addImage(t.logoDataUrl, M, footerTop, logo.width, logo.height);
     footerText.forEach((line, index) => doc.text(line, footerTextX, footerTop + 8 + index * 11));
-    doc.text(`${i} / ${pages}`, M + CW, H - 28, { align: "right" });
   }
 
   return doc.output("blob");
@@ -262,7 +265,7 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
 export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
   const t = effectiveTemplate(template);
   const d = await import("docx");
-  const { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle, TabStopType, ImageRun, Footer, PageNumber, ExternalHyperlink } = d;
+  const { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle, TabStopType, ImageRun, Footer, ExternalHyperlink } = d;
   const accent = t.accentColor.replace("#", "");
   const font = t.font === "times" ? "Georgia" : "Calibri";
   const links = allLinks(cv, t);
@@ -395,8 +398,11 @@ export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
       if (ed.details) children.push(...body(ed.details));
     }
   }
+  if (cv.skills.length) {
+    section("Skills");
+    children.push(...body(normalizeSkills(cv.skills).join("\n\n")));
+  }
   for (const [title, items] of [
-    ["Skills", cv.skills],
     ["Languages", cv.languages],
     ["Certifications", cv.certifications],
     ["Interests", cv.interests ?? []],
@@ -420,7 +426,6 @@ export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
                 tabStops: [{ type: TabStopType.RIGHT, position: 9900 }],
                 children: [
                   new TextRun({ text: footerLeft, size: 16, color: "646C78", font }),
-                  new TextRun({ children: ["\t", PageNumber.CURRENT], size: 16, color: "646C78", font }),
                 ],
               }),
               ...(footerSecond ? [new Paragraph({ children: [new TextRun({ text: footerSecond, size: 16, color: "646C78", font })] })] : []),
