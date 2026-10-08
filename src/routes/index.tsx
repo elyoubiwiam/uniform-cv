@@ -241,6 +241,7 @@ function Index() {
     setReviewingDownloads(true);
     try {
       for (const candidate of list) await runCheck(candidate);
+      list.forEach((candidate) => spellCheckedIds.current.add(candidate.id));
       toast.info("Review the suggestions for each CV, then download when you're ready. Nothing is corrected automatically.");
     } finally {
       setReviewingDownloads(false);
