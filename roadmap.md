@@ -8,3 +8,4 @@
 
 - [x] Style picker: real rendered example per style
 - [x] Clarified anonymise wording
+- [x] Small recruiter logo in reserved footer space in preview, PDF and Word

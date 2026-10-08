@@ -66,11 +66,11 @@ export function TemplateSettings({ template, onChange }: { template: Template; o
               <p className="pt-2 text-xs font-semibold uppercase tracking-[0.15em] text-accent">Agency</p>
               {field("agencyName", "Agency or client name", "e.g. Northbridge Talent")}
               <div className="space-y-1">
-                <Label>Logo (PNG or JPG)</Label>
-                <Input type="file" accept="image/png,image/jpeg" onChange={(e) => onLogo(e.target.files?.[0])} />
+                 <Label htmlFor="recruiter-logo">Footer logo (PNG or JPG)</Label>
+                 <Input id="recruiter-logo" type="file" accept="image/png,image/jpeg" onChange={(e) => onLogo(e.target.files?.[0])} />
                 {template.logoDataUrl && (
                   <div className="flex items-center gap-3 pt-2">
-                    <img src={template.logoDataUrl} alt="Logo" className="h-8 w-auto" />
+                     <img src={template.logoDataUrl} alt="Logo" className="h-8 max-w-24 object-contain" />
                     <Button variant="ghost" size="sm" onClick={() => set("logoDataUrl", null)}>Remove</Button>
                   </div>
                 )}

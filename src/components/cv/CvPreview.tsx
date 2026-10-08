@@ -45,16 +45,14 @@ export function CvPreview({ cv, template: raw, issues = [] }: { cv: CV; template
     </section>
   );
   return (
-    <div className="mx-auto aspect-[1/1.414] w-full max-w-[640px] overflow-hidden rounded-sm bg-card p-10 text-[12px] leading-relaxed text-card-foreground shadow-[0_1px_3px_rgb(0_0_0/0.08),0_12px_40px_-12px_rgb(0_0_0/0.18)]" style={{ fontFamily }}>
-      <div className="h-full overflow-y-auto pr-1">
+     <div className="mx-auto flex aspect-[1/1.414] w-full max-w-[640px] flex-col overflow-hidden rounded-sm bg-card p-10 text-[12px] leading-relaxed text-card-foreground shadow-[0_1px_3px_rgb(0_0_0/0.08),0_12px_40px_-12px_rgb(0_0_0/0.18)]" style={{ fontFamily }}>
+       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <div className={center ? "flex flex-col-reverse items-center gap-3 text-center" : "flex items-start justify-between gap-4"}>
           <div>
             <h2 className="text-2xl font-bold leading-tight"><Marked text={cv.fullName || "Candidate"} issues={issues} /></h2>
             {cv.headline && <p className="text-sm" style={accent}><Marked text={cv.headline} issues={issues} /></p>}
           </div>
-          {template.logoDataUrl ? (
-            <img src={template.logoDataUrl} alt="" className="h-8 w-auto object-contain" />
-          ) : template.agencyName ? (
+           {template.agencyName ? (
             <span className="text-[10px] font-bold uppercase tracking-wider" style={accent}>{template.agencyName}</span>
           ) : null}
         </div>
@@ -104,13 +102,16 @@ export function CvPreview({ cv, template: raw, issues = [] }: { cv: CV; template
             ["Interests", cv.interests ?? []],
           ] as const
         ).map(([t, items]) => items.length > 0 && <Section key={t} title={t}><p><L text={items.join("  ·  ")} /></p></Section>)}
-        {(foot1 || foot2) && (
-          <div className="mt-8 border-t border-border pt-2 text-[10px] text-muted-foreground">
-            {foot1 && <p>{foot1}</p>}
-            {foot2 && <p>{foot2}</p>}
-          </div>
-        )}
       </div>
+       {(template.logoDataUrl || foot1 || foot2) && (
+         <footer className="mt-4 flex shrink-0 items-center gap-4 border-t border-border pt-2 text-[10px] text-muted-foreground">
+           {template.logoDataUrl && <img src={template.logoDataUrl} alt="Recruiter logo" className="h-8 w-24 shrink-0 object-contain object-left" />}
+           <div className="min-w-0 break-words">
+             {foot1 && <p>{foot1}</p>}
+             {foot2 && <p>{foot2}</p>}
+           </div>
+         </footer>
+       )}
     </div>
   );
 }
