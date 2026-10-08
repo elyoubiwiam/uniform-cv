@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { checkCv, extractCv, shortenCv } from "@/lib/cv.functions";
 import { liveIssues } from "@/lib/proofread";
 import { StylePicker } from "@/components/cv/StylePicker";
-import { defaultTemplate, effectiveTemplate, type CV, type Template } from "@/lib/cv-schema";
+import { defaultTemplate, effectiveTemplate, separateCategories, type CV, type Template } from "@/lib/cv-schema";
 import { buildDocx, buildPdf, downloadBlob, safeFileName } from "@/lib/cv-export";
 import type { Candidate } from "@/components/cv/types";
 import { CvEditor } from "@/components/cv/CvEditor";
@@ -203,7 +203,10 @@ function Index() {
     setSelectedId((s) => s ?? next[0]!.id);
   };
 
-  const selected = candidates.find((c) => c.id === selectedId) ?? null;
+  const selectedRaw = candidates.find((c) => c.id === selectedId) ?? null;
+  const selected = selectedRaw?.cv
+    ? { ...selectedRaw, cv: separateCategories(selectedRaw.cv), originalCv: selectedRaw.originalCv ? separateCategories(selectedRaw.originalCv) : null }
+    : selectedRaw;
   const done = candidates.filter((c) => c.cv);
   const approved = candidates.filter((c) => c.status === "approved");
   const progress = useMemo(() => {
@@ -213,8 +216,9 @@ function Index() {
   }, [candidates]);
 
   const exportOne = async (cv: CV, kind: "pdf" | "docx") => {
-    const blob = kind === "pdf" ? await buildPdf(cv, template) : await buildDocx(cv, template);
-    downloadBlob(blob, safeFileName(cv, kind));
+    const separated = separateCategories(cv);
+    const blob = kind === "pdf" ? await buildPdf(separated, template) : await buildDocx(separated, template);
+    downloadBlob(blob, safeFileName(separated, kind));
   };
 
   const exportBatch = async (kind: "pdf" | "docx") => {
@@ -224,10 +228,11 @@ function Index() {
     try {
       const used = new Set<string>();
       for (const c of list) {
-        const blob = kind === "pdf" ? await buildPdf(c.cv!, template) : await buildDocx(c.cv!, template);
-        let name = safeFileName(c.cv!, kind);
+        const separated = separateCategories(c.cv!);
+        const blob = kind === "pdf" ? await buildPdf(separated, template) : await buildDocx(separated, template);
+        let name = safeFileName(separated, kind);
         let n = 2;
-        while (used.has(name)) name = safeFileName(c.cv!, kind).replace(`.${kind}`, `_${n++}.${kind}`);
+        while (used.has(name)) name = safeFileName(separated, kind).replace(`.${kind}`, `_${n++}.${kind}`);
         used.add(name);
         downloadBlob(blob, name);
         // small gap so browsers allow each separate download
