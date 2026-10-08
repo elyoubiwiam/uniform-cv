@@ -14,3 +14,4 @@
 - [x] Prompt for spelling review before every PDF/Word download
 - [x] Remove CV page numbers from preview and downloads
 - [x] Use comma-separated skills, preserving optional category groups during edits and exports
+- [ ] Ask before removing non-PNG recruiter logo backgrounds
