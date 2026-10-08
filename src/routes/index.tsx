@@ -290,7 +290,6 @@ function Index() {
           <div className="flex items-center gap-2">
             <span className="hidden px-2 text-sm text-muted-foreground sm:inline">Free</span>
             <Link to="/privacy" className="hidden px-2 text-sm text-muted-foreground hover:text-foreground sm:inline">Your data</Link>
-            <TemplateSettings template={template} onChange={updateTemplate} />
             <Button size="sm" variant="outline" disabled={!done.length || exporting || reviewingDownloads} onClick={() => requestDownload("docx")}>
               <FileDown className="h-4 w-4" /> Word
             </Button>
