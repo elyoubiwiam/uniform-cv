@@ -9,7 +9,7 @@ export async function readPdfText(buffer: ArrayBuffer): Promise<{ text: string; 
     import("pdfjs-dist/build/pdf.worker.min.mjs?url"),
   ]);
   pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
-  const task = pdfjs.getDocument({ data: new Uint8Array(buffer), isEvalSupported: false });
+  const task = pdfjs.getDocument({ data: new Uint8Array(buffer) });
   try {
     const pdf = await task.promise;
     const pages: string[] = [];
