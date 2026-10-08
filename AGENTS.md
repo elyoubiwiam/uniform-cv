@@ -17,3 +17,4 @@
 - All exports and the preview pass the template through effectiveTemplate(), which strips agency branding and anonymisation in candidate mode; why: branding entered earlier must never leak into a candidate's CV.
 - Photos/scans (JPG/PNG/WEBP) are sent to the extraction model as image files under the same verbatim rules; why: OCR without a separate service.
 - Footer branding uses bounded, aspect-ratio-preserving logos and reserved space in preview and exports; why: branding cannot overlap candidate content.
+- CV paragraph boundaries and export spacing are handled by the shared CV layout module; why: consistent readable spacing without rewriting source content.

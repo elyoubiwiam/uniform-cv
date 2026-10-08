@@ -1,6 +1,7 @@
 import { consultantLine, effectiveTemplate, footerLines, type CV, type Template } from "@/lib/cv-schema";
 import type { Issue } from "@/lib/proofread";
 import { allLinks, contactLine, dateRange, headerLinks, linkSegments } from "@/lib/cv-export";
+import { cvParagraphs } from "@/lib/cv-layout";
 
 /** On-screen preview of the export. Uses the agency's chosen accent (user data, not a theme colour). */
 function Marked({ text, issues }: { text: string; issues: Issue[] }) {
@@ -35,6 +36,7 @@ export function CvPreview({ cv, template: raw, issues = [] }: { cv: CV; template
     </>
   );
   const center = template.align === "center";
+  const Paragraphs = ({ text }: { text: string }) => <div className="space-y-2">{cvParagraphs(text).map((paragraph, i) => <p key={i} className="whitespace-pre-line"><L text={paragraph} /></p>)}</div>;
   const fontFamily = template.font === "times" ? "Georgia, 'Times New Roman', serif" : "Helvetica, Arial, sans-serif";
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <section className="mt-5">
@@ -45,7 +47,7 @@ export function CvPreview({ cv, template: raw, issues = [] }: { cv: CV; template
     </section>
   );
   return (
-     <div className="mx-auto flex aspect-[1/1.414] w-full max-w-[640px] flex-col overflow-hidden rounded-sm bg-card p-10 text-[12px] leading-relaxed text-card-foreground shadow-[0_1px_3px_rgb(0_0_0/0.08),0_12px_40px_-12px_rgb(0_0_0/0.18)]" style={{ fontFamily }}>
+     <div className="mx-auto flex aspect-[1/1.414] w-full max-w-[640px] flex-col overflow-hidden rounded-sm bg-card p-10 text-[12px] leading-normal text-card-foreground shadow-[0_1px_3px_rgb(0_0_0/0.08),0_12px_40px_-12px_rgb(0_0_0/0.18)]" style={{ fontFamily }}>
        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <div className={center ? "flex flex-col-reverse items-center gap-3 text-center" : "flex items-start justify-between gap-4"}>
           <div>
@@ -63,18 +65,18 @@ export function CvPreview({ cv, template: raw, issues = [] }: { cv: CV; template
         <div className="mt-3 h-[2px]" style={{ backgroundColor: template.accentColor }} />
         {presented && <p className={`mt-1 text-[10px] text-muted-foreground ${center ? "text-center" : ""}`}>{presented}</p>}
 
-        {cv.summary && <Section title="Profile"><p className="whitespace-pre-line"><L text={cv.summary} /></p></Section>}
+         {cv.summary && <Section title="Profile"><Paragraphs text={cv.summary} /></Section>}
         {cv.experience.length > 0 && (
           <Section title="Experience">
             {cv.experience.map((e, i) => (
-              <div key={i} className="mb-3">
+               <div key={i} className="mb-4">
                 <div className="flex justify-between gap-3">
                   <span className="font-bold"><Marked text={e.title} issues={issues} /></span>
                   <span className="shrink-0 text-[11px] text-muted-foreground">{dateRange(e.startDate, e.endDate)}</span>
                 </div>
                 <div style={accent}><Marked text={[e.company, e.location].filter(Boolean).join(", ")} issues={issues} /></div>
-                <ul className="mt-1 list-disc pl-4">
-                  {e.bullets.map((b, j) => <li key={j}><L text={b} /></li>)}
+                 <ul className="mt-1 list-disc space-y-1 pl-4">
+                   {e.bullets.map((b, j) => <li key={j}><Paragraphs text={b} /></li>)}
                 </ul>
               </div>
             ))}
@@ -83,13 +85,13 @@ export function CvPreview({ cv, template: raw, issues = [] }: { cv: CV; template
         {cv.education.length > 0 && (
           <Section title="Education">
             {cv.education.map((e, i) => (
-              <div key={i} className="mb-2">
+               <div key={i} className="mb-4">
                 <div className="flex justify-between gap-3">
                   <span className="font-bold"><Marked text={e.degree} issues={issues} /></span>
                   <span className="shrink-0 text-[11px] text-muted-foreground">{dateRange(e.startDate, e.endDate)}</span>
                 </div>
                 <div style={accent}><Marked text={e.institution} issues={issues} /></div>
-                {e.details && <p><L text={e.details} /></p>}
+                 {e.details && <div className="mt-1"><Paragraphs text={e.details} /></div>}
               </div>
             ))}
           </Section>
