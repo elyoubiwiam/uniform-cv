@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 export function OriginalView({ file }: { file: File }) {
   const [url, setUrl] = useState<string | null>(null);
   const [html, setHtml] = useState<string | null>(null);
+  const [text, setText] = useState<string | null>(null);
   const name = file.name.toLowerCase();
   const isPdf = file.type === "application/pdf" || name.endsWith(".pdf");
   const isImg = file.type.startsWith("image/");
@@ -10,6 +11,7 @@ export function OriginalView({ file }: { file: File }) {
 
   useEffect(() => {
     let cancelled = false;
+    setUrl(null); setHtml(null); setText(null);
     if (isPdf || isImg) {
       const u = URL.createObjectURL(file);
       setUrl(u);
@@ -22,12 +24,11 @@ export function OriginalView({ file }: { file: File }) {
         if (!cancelled) setHtml(r.value);
       } else {
         const t = await file.text();
-        if (!cancelled) setHtml(null), setUrl(null), setText(t);
+        if (!cancelled) setText(t);
       }
     })();
     return () => { cancelled = true; };
   }, [file]);
-  const [text, setText] = useState<string | null>(null);
 
   return (
     <div className="h-[calc(100vh-220px)] min-h-[500px] overflow-auto rounded-md border bg-card">

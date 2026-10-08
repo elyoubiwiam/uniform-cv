@@ -112,6 +112,7 @@ function Index() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [template, setTemplate] = useState<Template>(defaultTemplate);
+  const [desktopView, setDesktopView] = useState<"edit" | "compare">("edit");
   const [dragging, setDragging] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [downloadRequest, setDownloadRequest] = useState<{ kind: "pdf" | "docx"; ids: string[] } | null>(null);
