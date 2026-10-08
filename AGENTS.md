@@ -18,3 +18,5 @@
 - Photos/scans (JPG/PNG/WEBP) are sent to the extraction model as image files under the same verbatim rules; why: OCR without a separate service.
 - Footer branding uses bounded, aspect-ratio-preserving logos and reserved space in preview and exports; why: branding cannot overlap candidate content.
 - CV paragraph boundaries and export spacing are handled by the shared CV layout module; why: consistent readable spacing without rewriting source content.
+- Recruiter details share one form between the start page and Template settings; why: both surfaces edit the same saved template without divergent fields.
+- Every PDF/Word download uses one spelling-review dialog and shared candidate selection; why: single and batch downloads prompt consistently without automatically accepting corrections.

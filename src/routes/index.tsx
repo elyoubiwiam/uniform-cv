@@ -17,7 +17,10 @@ import type { Candidate } from "@/components/cv/types";
 import { CvEditor } from "@/components/cv/CvEditor";
 import { CvPreview } from "@/components/cv/CvPreview";
 import { TemplateSettings } from "@/components/cv/TemplateSettings";
+import { RecruiterDetails } from "@/components/cv/RecruiterDetails";
+import { downloadReviewIds } from "@/lib/download-review";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
@@ -110,6 +113,8 @@ function Index() {
   const [template, setTemplate] = useState<Template>(defaultTemplate);
   const [dragging, setDragging] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [downloadRequest, setDownloadRequest] = useState<{ kind: "pdf" | "docx"; ids: string[] } | null>(null);
+  const [reviewingDownloads, setReviewingDownloads] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const running = useRef(new Set<string>());
   const templateRef = useRef(template);
@@ -200,7 +205,7 @@ function Index() {
     }
     if (!next.length) return;
     setCandidates((cs) => [...cs, ...next]);
-    setSelectedId((s) => s ?? next[0]!.id);
+    setSelectedId((s) => s ?? next[0]?.id ?? null);
   };
 
   const selectedRaw = candidates.find((c) => c.id === selectedId) ?? null;
@@ -221,14 +226,35 @@ function Index() {
     downloadBlob(blob, safeFileName(separated, kind));
   };
 
-  const exportBatch = async (kind: "pdf" | "docx") => {
-    const list = (approved.length ? approved : done).filter((c) => c.cv);
+  const requestDownload = (kind: "pdf" | "docx", candidateId?: string) => {
+    const ids = downloadReviewIds(candidates, candidateId);
+    if (ids.length) setDownloadRequest({ kind, ids });
+  };
+
+  const checkBeforeDownload = async () => {
+    if (!downloadRequest) return;
+    const list = candidates.filter((candidate) => downloadRequest.ids.includes(candidate.id) && candidate.cv);
+    setDownloadRequest(null);
+    if (!list.length) return;
+    setSelectedId(list[0]?.id ?? null);
+    setReviewingDownloads(true);
+    try {
+      for (const candidate of list) await runCheck(candidate);
+      toast.info("Review the suggestions for each CV, then download when you're ready. Nothing is corrected automatically.");
+    } finally {
+      setReviewingDownloads(false);
+    }
+  };
+
+  const exportBatch = async (kind: "pdf" | "docx", ids: string[]) => {
+    const list = candidates.filter((c) => ids.includes(c.id) && c.cv);
     if (!list.length) return;
     setExporting(true);
     try {
       const used = new Set<string>();
       for (const c of list) {
-        const separated = separateCategories(c.cv!);
+        if (!c.cv) continue;
+        const separated = separateCategories(c.cv);
         const blob = kind === "pdf" ? await buildPdf(separated, template) : await buildDocx(separated, template);
         let name = safeFileName(separated, kind);
         let n = 2;
@@ -258,10 +284,10 @@ function Index() {
             <span className="hidden px-2 text-sm text-muted-foreground sm:inline">Free</span>
             <Link to="/privacy" className="hidden px-2 text-sm text-muted-foreground hover:text-foreground sm:inline">Your data</Link>
             <TemplateSettings template={template} onChange={updateTemplate} />
-            <Button size="sm" variant="outline" disabled={!done.length || exporting} onClick={() => exportBatch("docx")}>
+            <Button size="sm" variant="outline" disabled={!done.length || exporting || reviewingDownloads} onClick={() => requestDownload("docx")}>
               <FileDown className="h-4 w-4" /> Word
             </Button>
-            <Button size="sm" disabled={!done.length || exporting} onClick={() => exportBatch("pdf")} className="bg-accent text-accent-foreground hover:bg-accent/90">
+            <Button size="sm" disabled={!done.length || exporting || reviewingDownloads} onClick={() => requestDownload("pdf")} className="bg-accent text-accent-foreground hover:bg-accent/90">
               {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               Export {approved.length ? `${approved.length} approved` : done.length ? `all ${done.length}` : ""} PDF
             </Button>
@@ -288,14 +314,20 @@ function Index() {
             <AudiencePicker template={template} onChange={updateTemplate} />
           </div>
           <div className="mt-6">
-            <p className="mb-2 text-sm font-medium">2. Pick a style to start from <span className="text-muted-foreground">(fine-tune it under Template{template.audience === "recruiter" ? ", where you can add your logo and consultant details" : ""})</span></p>
+            <p className="mb-2 text-sm font-medium">2. Pick a style to start from <span className="text-muted-foreground">(fine-tune it under Template)</span></p>
             <StylePicker template={template} onChange={updateTemplate} className="sm:grid-cols-4" />
             {template.audience === "recruiter" && <label className="mt-4 flex items-center gap-2 text-sm">
               <input type="checkbox" checked={template.anonymise} onChange={(e) => updateTemplate({ ...template, anonymise: e.target.checked })} className="h-4 w-4 accent-[var(--accent)]" />
               Anonymise candidates — the name becomes initials and contact details (email, phone, address, links) are removed, so the client can't identify them
             </label>}
           </div>
-          <p className="mt-8 text-sm font-medium">3. Add {template.audience === "candidate" ? "your CV" : "your CVs"}</p>
+          {template.audience === "recruiter" && (
+            <section className="mt-8 border-t border-border pt-6">
+              <h2 className="mb-4 text-sm font-medium">3. Your recruiter details <span className="font-normal text-muted-foreground">(optional)</span></h2>
+              <RecruiterDetails template={template} onChange={updateTemplate} />
+            </section>
+          )}
+          <p className="mt-8 text-sm font-medium">{template.audience === "recruiter" ? "4" : "3"}. Add {template.audience === "candidate" ? "your CV" : "your CVs"}</p>
           <DropZone dragging={dragging} setDragging={setDragging} onFiles={addFiles} inputRef={inputRef} big />
           <ol className="mt-10 grid gap-4 text-sm sm:grid-cols-3">
             {["Upload PDFs or Word files in bulk", "Review each CV side by side", "Download each as PDF or Word"].map((s, i) => (
@@ -391,10 +423,10 @@ function Index() {
                     <p className="text-sm text-muted-foreground">From {selected.file.name}{selected.scanned && <span className="ml-2 rounded-sm bg-accent/10 px-1.5 py-0.5 text-xs text-accent">Read from a scan — check carefully</span>}{effectiveTemplate(template).anonymise && <span className="ml-2 inline-flex items-center gap-1"><EyeOff className="h-3 w-3" /> Anonymised</span>}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" onClick={() => exportOne(selected.cv!, "docx")}>
+                    <Button variant="outline" size="sm" disabled={exporting || reviewingDownloads || selected.checking} onClick={() => requestDownload("docx", selected.id)}>
                       <FileText className="h-4 w-4" /> Word
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => exportOne(selected.cv!, "pdf")}>
+                    <Button variant="outline" size="sm" disabled={exporting || reviewingDownloads || selected.checking} onClick={() => requestDownload("pdf", selected.id)}>
                       <Download className="h-4 w-4" /> PDF
                     </Button>
                     {selected.status === "approved" ? (
@@ -432,7 +464,7 @@ function Index() {
                       </Button>
                     </>
                   )}
-                  <Button size="sm" variant="outline" disabled={selected.checking} onClick={() => runCheck(selected)}>
+                  <Button size="sm" variant="outline" disabled={selected.checking || reviewingDownloads} onClick={() => runCheck(selected)}>
                     {selected.checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <SpellCheck className="h-4 w-4" />} Check spelling
                   </Button>
                   <Button size="sm" variant="ghost" className="ml-auto" disabled={selected.shortening} onClick={() => patch(selected.id, { status: "queued", cv: null })}>
@@ -460,6 +492,24 @@ function Index() {
           </section>
         </main>
       )}
+      <Dialog open={downloadRequest !== null} onOpenChange={(open) => { if (!open) setDownloadRequest(null); }}>
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Check spelling before downloading?</DialogTitle>
+            <DialogDescription>
+              {downloadRequest && downloadRequest.ids.length > 1 ? `Check spelling, grammar and terminology in all ${downloadRequest.ids.length} CVs before sharing them.` : "Check spelling, grammar and terminology before sharing this CV."} You choose which suggestions to accept; nothing is corrected automatically.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => {
+              const request = downloadRequest;
+              setDownloadRequest(null);
+              if (request) void exportBatch(request.kind, request.ids);
+            }}><Download className="h-4 w-4" /> Download anyway</Button>
+            <Button onClick={() => void checkBeforeDownload()}><SpellCheck className="h-4 w-4" /> Check spelling first</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
