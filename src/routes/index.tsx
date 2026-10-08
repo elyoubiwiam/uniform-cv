@@ -199,8 +199,6 @@ function Index() {
     if (!list.length) return;
     setExporting(true);
     try {
-      const JSZip = (await import("jszip")).default;
-      const zip = new JSZip();
       const used = new Set<string>();
       for (const c of list) {
         const blob = kind === "pdf" ? await buildPdf(c.cv!, template) : await buildDocx(c.cv!, template);
@@ -208,9 +206,10 @@ function Index() {
         let n = 2;
         while (used.has(name)) name = safeFileName(c.cv!, kind).replace(`.${kind}`, `_${n++}.${kind}`);
         used.add(name);
-        zip.file(name, blob);
+        downloadBlob(blob, name);
+        // small gap so browsers allow each separate download
+        await new Promise((r) => setTimeout(r, 400));
       }
-      downloadBlob(await zip.generateAsync({ type: "blob" }), `CVs_${kind.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.zip`);
     } catch (e) {
       console.error(e);
       toast.error("Export failed. Please try again.");
