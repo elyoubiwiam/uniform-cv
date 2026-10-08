@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { checkCv, extractCv, shortenCv } from "@/lib/cv.functions";
 import { liveIssues } from "@/lib/proofread";
 import { StylePicker } from "@/components/cv/StylePicker";
-import { defaultTemplate, effectiveTemplate, separateCategories, type CV, type Template } from "@/lib/cv-schema";
+import { defaultTemplate, effectiveTemplate, separateCategories, type Template } from "@/lib/cv-schema";
 import { buildDocx, buildPdf, downloadBlob, safeFileName } from "@/lib/cv-export";
 import type { Candidate } from "@/components/cv/types";
 import { CvEditor } from "@/components/cv/CvEditor";
@@ -219,12 +219,6 @@ function Index() {
     const finished = candidates.filter((c) => ["ready", "approved", "error"].includes(c.status)).length;
     return { total, finished };
   }, [candidates]);
-
-  const exportOne = async (cv: CV, kind: "pdf" | "docx") => {
-    const separated = separateCategories(cv);
-    const blob = kind === "pdf" ? await buildPdf(separated, template) : await buildDocx(separated, template);
-    downloadBlob(blob, safeFileName(separated, kind));
-  };
 
   const requestDownload = (kind: "pdf" | "docx", candidateId?: string) => {
     const ids = downloadReviewIds(candidates, candidateId);
