@@ -115,6 +115,7 @@ function Index() {
   const [exporting, setExporting] = useState(false);
   const [downloadRequest, setDownloadRequest] = useState<{ kind: "pdf" | "docx"; ids: string[] } | null>(null);
   const [reviewingDownloads, setReviewingDownloads] = useState(false);
+  const spellCheckedIds = useRef<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
   const running = useRef(new Set<string>());
   const templateRef = useRef(template);
@@ -222,7 +223,13 @@ function Index() {
 
   const requestDownload = (kind: "pdf" | "docx", candidateId?: string) => {
     const ids = downloadReviewIds(candidates, candidateId);
-    if (ids.length) setDownloadRequest({ kind, ids });
+    if (!ids.length) return;
+    // Skip the reminder when every CV in this download has already been spell-checked.
+    if (ids.every((id) => spellCheckedIds.current.has(id))) {
+      void exportBatch(kind, ids);
+      return;
+    }
+    setDownloadRequest({ kind, ids });
   };
 
   const checkBeforeDownload = async () => {
@@ -234,6 +241,7 @@ function Index() {
     setReviewingDownloads(true);
     try {
       for (const candidate of list) await runCheck(candidate);
+      list.forEach((candidate) => spellCheckedIds.current.add(candidate.id));
       toast.info("Review the suggestions for each CV, then download when you're ready. Nothing is corrected automatically.");
     } finally {
       setReviewingDownloads(false);
