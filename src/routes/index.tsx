@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import cvBefore from "@/assets/cv-before.jpg";
 import cvAfter from "@/assets/cv-after.jpg";
+import uniformIcon from "@/assets/uniform-icon.png";
 import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
 import { imageType, type ImageType } from "@/lib/file-kind";
 import { AudiencePicker } from "@/components/cv/AudiencePicker";
@@ -278,8 +279,9 @@ function Index() {
     <div className="min-h-screen bg-background font-sans text-foreground">
       <header className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-6 py-3">
-          <div className="flex items-baseline gap-3">
-            <span className="font-display text-2xl font-semibold tracking-tight">Uniform<span className="text-accent">.</span></span>
+            <div className="flex items-baseline gap-3">
+              <img src={uniformIcon} alt="" aria-hidden className="h-8 w-8 self-center" width={32} height={32} />
+              <span className="font-display text-2xl font-semibold tracking-tight">Uniform<span className="text-accent">.</span></span>
             <span className="hidden text-sm text-muted-foreground md:inline">{template.audience === "candidate" ? "Structure your CV" : "CV formatting for recruiters"}</span>
           </div>
           <div className="flex items-center gap-2">
