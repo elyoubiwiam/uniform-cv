@@ -1,4 +1,4 @@
-import type { CV, Template } from "@/lib/cv-schema";
+import { consultantLine, effectiveTemplate, footerLines, type CV, type Template } from "@/lib/cv-schema";
 import type { Issue } from "@/lib/proofread";
 import { allLinks, contactLine, dateRange, headerLinks, linkSegments } from "@/lib/cv-export";
 
@@ -21,7 +21,10 @@ function Marked({ text, issues }: { text: string; issues: Issue[] }) {
   );
 }
 
-export function CvPreview({ cv, template, issues = [] }: { cv: CV; template: Template; issues?: Issue[] }) {
+export function CvPreview({ cv, template: raw, issues = [] }: { cv: CV; template: Template; issues?: Issue[] }) {
+  const template = effectiveTemplate(raw);
+  const presented = consultantLine(template);
+  const [foot1, foot2] = footerLines(template);
   const accent = { color: template.accentColor };
   const links = allLinks(cv, template);
   const L = ({ text }: { text: string }) => (
@@ -60,6 +63,7 @@ export function CvPreview({ cv, template, issues = [] }: { cv: CV; template: Tem
           {headerLinks(cv, template).map((link, i) => <a key={i} href={link.url} target="_blank" rel="noreferrer" className="break-all underline" style={accent}>{link.text}</a>)}
         </div>
         <div className="mt-3 h-[2px]" style={{ backgroundColor: template.accentColor }} />
+        {presented && <p className={`mt-1 text-[10px] text-muted-foreground ${center ? "text-center" : ""}`}>{presented}</p>}
 
         {cv.summary && <Section title="Profile"><p className="whitespace-pre-line"><L text={cv.summary} /></p></Section>}
         {cv.experience.length > 0 && (
@@ -99,6 +103,12 @@ export function CvPreview({ cv, template, issues = [] }: { cv: CV; template: Tem
             ["Certifications", cv.certifications],
           ] as const
         ).map(([t, items]) => items.length > 0 && <Section key={t} title={t}><p><L text={items.join("  ·  ")} /></p></Section>)}
+        {(foot1 || foot2) && (
+          <div className="mt-8 border-t border-border pt-2 text-[10px] text-muted-foreground">
+            {foot1 && <p>{foot1}</p>}
+            {foot2 && <p>{foot2}</p>}
+          </div>
+        )}
       </div>
     </div>
   );

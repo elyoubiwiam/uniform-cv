@@ -5,7 +5,8 @@ import { reflowCv } from "./reflow";
 
 const inputSchema = z.object({
   filename: z.string().max(300),
-  kind: z.enum(["pdf", "text"]),
+  kind: z.enum(["pdf", "text", "image"]),
+  mediaType: z.enum(["image/png", "image/jpeg", "image/webp"]).optional(),
   // base64 for pdf, plain text otherwise
   data: z.string().min(1).max(14_000_000),
   hyperlinks: z.array(z.string().max(2000)).max(200).default([]),
@@ -101,7 +102,12 @@ export const extractCv = createServerFn({ method: "POST" })
             { type: "text", text: `CV file: ${data.filename}${links}` },
             { type: "file", filename: data.filename, data: data.data, mediaType: "application/pdf" },
           ]
-        : [{ type: "text", text: `CV file: ${data.filename}${links}\n\n${data.data}` }];
+        : data.kind === "image"
+          ? [
+              { type: "text", text: `CV file (photo or scan — read every word exactly as printed): ${data.filename}${links}` },
+              { type: "file", filename: data.filename, data: data.data, mediaType: data.mediaType ?? "image/jpeg" },
+            ]
+          : [{ type: "text", text: `CV file: ${data.filename}${links}\n\n${data.data}` }];
     return runCv(BASE + (data.anonymise ? ANON : ""), content);
   });
 
