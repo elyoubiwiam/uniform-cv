@@ -16,3 +16,4 @@
 - [x] Use comma-separated skills, preserving optional category groups during edits and exports
 - [x] Ask before removing non-PNG recruiter logo backgrounds
 - [x] Brand icon in the navbar and as the browser-tab icon
+- [x] Original CV shown full-size (A4 pages) in compare view; Template button removed from header; logo links home
