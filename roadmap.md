@@ -17,3 +17,4 @@
 - [x] Ask before removing non-PNG recruiter logo backgrounds
 - [x] Brand icon in the navbar and as the browser-tab icon
 - [x] Compare mode shows equally sized PDF pages from the original and generated PDFs, with independent page navigation; Template button removed from header; logo links home
+- [ ] Verify compare page controls and document sizing at desktop, tablet and mobile widths
