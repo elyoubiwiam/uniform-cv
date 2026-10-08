@@ -6,5 +6,5 @@
 - [x] No pricing page — just say it is free
 - [ ] Pull CVs from an ATS (next planned step)
 
-- [ ] Style picker: show an example of each template style
-- [ ] Clarify "anonymise" wording (initials only, contact details removed)
+- [x] Style picker: real rendered example per style
+- [x] Clarified anonymise wording
