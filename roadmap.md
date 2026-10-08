@@ -15,3 +15,4 @@
 - [x] Remove CV page numbers from preview and downloads
 - [x] Use comma-separated skills, preserving optional category groups during edits and exports
 - [x] Ask before removing non-PNG recruiter logo backgrounds
+- [x] Brand icon in the navbar and as the browser-tab icon
