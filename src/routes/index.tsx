@@ -223,7 +223,13 @@ function Index() {
 
   const requestDownload = (kind: "pdf" | "docx", candidateId?: string) => {
     const ids = downloadReviewIds(candidates, candidateId);
-    if (ids.length) setDownloadRequest({ kind, ids });
+    if (!ids.length) return;
+    // Skip the reminder when every CV in this download has already been spell-checked.
+    if (ids.every((id) => spellCheckedIds.current.has(id))) {
+      void exportBatch(kind, ids);
+      return;
+    }
+    setDownloadRequest({ kind, ids });
   };
 
   const checkBeforeDownload = async () => {
