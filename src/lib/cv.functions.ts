@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { cvSchema, type CV } from "./cv-schema";
+import { cvSchema, separateCategories, type CV } from "./cv-schema";
 import { reflowCv } from "./reflow";
 
 const inputSchema = z.object({
@@ -78,7 +78,7 @@ async function runCv(instructions: string, content: Content): Promise<ExtractRes
         },
       },
     });
-    const cv = reflowCv(await result.output);
+    const cv = separateCategories(reflowCv(await result.output));
     return { ok: true, cv };
   } catch (err) {
     if (NoObjectGeneratedError.isInstance(err)) {
