@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Download, FileText, Loader2, RotateCw, Scissors, RefreshCw, Undo2, EyeOff, Trash2, Upload, AlertCircle, FileDown } from "lucide-react";
+import { Check, Download, FileText, Loader2, RotateCw, Scissors, RefreshCw, Undo2, SpellCheck, EyeOff, Trash2, Upload, AlertCircle, FileDown } from "lucide-react";
 import { toast } from "sonner";
-import { extractCv, shortenCv } from "@/lib/cv.functions";
+import { checkCv, extractCv, shortenCv } from "@/lib/cv.functions";
+import { liveIssues } from "@/lib/proofread";
 import { StylePicker } from "@/components/cv/StylePicker";
 import { defaultTemplate, type CV, type Template } from "@/lib/cv-schema";
 import { buildDocx, buildPdf, downloadBlob, safeFileName } from "@/lib/cv-export";
@@ -90,6 +91,20 @@ function Index() {
   const running = useRef(new Set<string>());
   const templateRef = useRef(template);
   templateRef.current = template;
+
+  const check = useServerFn(checkCv);
+  const runCheck = async (c: Candidate) => {
+    if (!c.cv) return;
+    patch(c.id, { checking: true });
+    const res = await check({ data: { cv: c.cv } }).catch(() => null);
+    if (res?.ok) {
+      patch(c.id, { checking: false, issues: res.issues.map((i) => ({ ...i, id: crypto.randomUUID() })) });
+      if (!res.issues.length) toast.success("No spelling or grammar issues found.");
+    } else {
+      patch(c.id, { checking: false });
+      toast.error(res && !res.ok ? res.error : "Couldn't check this CV. Try again.");
+    }
+  };
 
   const runShorten = async (c: Candidate) => {
     if (!c.originalCv) return;
@@ -362,6 +377,9 @@ function Index() {
                       </Button>
                     </>
                   )}
+                  <Button size="sm" variant="outline" disabled={selected.checking} onClick={() => runCheck(selected)}>
+                    {selected.checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <SpellCheck className="h-4 w-4" />} Check spelling
+                  </Button>
                   <Button size="sm" variant="ghost" className="ml-auto" disabled={selected.shortening} onClick={() => patch(selected.id, { status: "queued", cv: null })}>
                     <RotateCw className="h-4 w-4" /> Re-read file
                   </Button>
@@ -371,15 +389,15 @@ function Index() {
                     <TabsTrigger value="side">Preview</TabsTrigger>
                     <TabsTrigger value="edit">Edit</TabsTrigger>
                   </TabsList>
-                  <TabsContent value="side"><CvPreview cv={selected.cv} template={template} /></TabsContent>
-                  <TabsContent value="edit"><CvEditor cv={selected.cv} onChange={(cv) => patch(selected.id, { cv })} /></TabsContent>
+                  <TabsContent value="side"><CvPreview cv={selected.cv} template={template} issues={liveIssues(selected.cv, selected.issues ?? [])} /></TabsContent>
+                  <TabsContent value="edit"><CvEditor cv={selected.cv} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} /></TabsContent>
                 </Tabs>
                 <div className="hidden gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
                   <div className="max-h-[calc(100vh-180px)] overflow-y-auto pr-2">
-                    <CvEditor cv={selected.cv} onChange={(cv) => patch(selected.id, { cv })} />
+                    <CvEditor cv={selected.cv} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} />
                   </div>
                   <div className="sticky top-20 self-start">
-                    <CvPreview cv={selected.cv} template={template} />
+                    <CvPreview cv={selected.cv} template={template} issues={liveIssues(selected.cv, selected.issues ?? [])} />
                   </div>
                 </div>
               </>

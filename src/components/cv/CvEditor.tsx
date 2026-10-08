@@ -1,4 +1,5 @@
-import { Link2, Plus, Trash2 } from "lucide-react";
+import { Check, Link2, Plus, Trash2, X } from "lucide-react";
+import { applyFix, type Issue } from "@/lib/proofread";
 import { useState } from "react";
 import type { CV } from "@/lib/cv-schema";
 import { Input } from "@/components/ui/input";
@@ -42,7 +43,7 @@ function Heading({ children, onAdd }: { children: React.ReactNode; onAdd?: () =>
   );
 }
 
-export function CvEditor({ cv, onChange }: { cv: CV; onChange: (cv: CV) => void }) {
+export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onChange: (cv: CV) => void; issues?: Issue[]; onIssues?: (i: Issue[]) => void }) {
   const set = <K extends keyof CV>(k: K, v: CV[K]) => onChange({ ...cv, [k]: v });
   const [selected, setSelected] = useState("");
   reportSelection = setSelected;
@@ -64,6 +65,25 @@ export function CvEditor({ cv, onChange }: { cv: CV; onChange: (cv: CV) => void 
           {selected ? `Selected: "${selected}"` : "Select a word in any field below to link it"}
         </span>
       </div>
+      {issues.length > 0 && (
+        <div className="space-y-2 rounded-md border border-destructive/40 bg-card p-3">
+          <p className="text-xs text-muted-foreground">{issues.length} possible spelling/grammar issue{issues.length > 1 ? "s" : ""}, underlined in red in the preview. Nothing is changed unless you accept it — or just edit the text below.</p>
+          {issues.map((i) => (
+            <div key={i.id} className="flex items-center gap-2 text-sm">
+              <span className="min-w-0 flex-1 truncate">
+                <span className="underline decoration-destructive decoration-wavy">{i.text}</span> → <strong>{i.suggestion}</strong>
+                <span className="ml-1 text-xs text-muted-foreground">({i.reason})</span>
+              </span>
+              <Button size="sm" variant="outline" onClick={() => { onChange(applyFix(cv, i)); onIssues?.(issues.filter((x) => x.id !== i.id)); }}>
+                <Check className="h-4 w-4" /> Accept
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => onIssues?.(issues.filter((x) => x.id !== i.id))}>
+                <X className="h-4 w-4" /> Ignore
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
       <Heading>Candidate</Heading>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Full name" value={cv.fullName} onChange={(v) => set("fullName", v)} />
