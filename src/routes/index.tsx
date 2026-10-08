@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import cvBefore from "@/assets/cv-before.jpg";
 import cvAfter from "@/assets/cv-after.jpg";
+import { imageType, type ImageType } from "@/lib/file-kind";
 import { AudiencePicker } from "@/components/cv/AudiencePicker";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -57,16 +58,7 @@ async function pdfLinks(buf: ArrayBuffer): Promise<string[]> {
   }
 }
 
-type ImageType = "image/png" | "image/jpeg" | "image/webp";
 type Payload = { kind: "pdf" | "text" | "image"; data: string; hyperlinks: string[]; mediaType?: ImageType };
-
-export function imageType(name: string): ImageType | null {
-  const n = name.toLowerCase();
-  if (n.endsWith(".png")) return "image/png";
-  if (/\.(jpe?g)$/.test(n)) return "image/jpeg";
-  if (n.endsWith(".webp")) return "image/webp";
-  return null;
-}
 
 function toBase64(ab: ArrayBuffer) {
   const buf = new Uint8Array(ab);
