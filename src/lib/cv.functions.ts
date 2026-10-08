@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { cvSchema, type CV } from "./cv-schema";
+import { reflowCv } from "./reflow";
 
 const inputSchema = z.object({
   filename: z.string().max(300),
@@ -17,7 +18,8 @@ STRICT VERBATIM FORMAT ONLY: every character of text you return must be copied f
 - Split experience into roles, most recent first; copy original bullet points exactly. You may separate existing paragraphs only at their original sentence boundaries, without changing the sentence text.
 - Dates: copy them exactly as written. Never normalise date formats or substitute words such as "Present".
 - If a field is not in the CV use null (or an empty list). Never guess.
-- summary: the CV's own profile/summary text verbatim, or null.
+- summary: the CV's own profile/summary text verbatim and COMPLETE (every sentence, never truncated), or null. Line breaks that only come from the source layout's line wrapping are not part of the text: join wrapped lines with a single space and keep only genuine paragraph breaks. The same applies to bullet points.
+- Copy ALL text of the CV into the matching fields; never drop sentences, bullets, roles or entries.
 - headline: the candidate's stated job title/headline, or null.
 - hyperlinks: every link attached to text in the CV. "text" is its original visible title (e.g. "Portfolio"), even if that title appears nowhere else in the CV; "url" is the exact target. Preserve every embedded link provided with the file. These will be displayed beside the candidate's contact information.`;
 
@@ -74,7 +76,7 @@ async function runCv(instructions: string, content: Content): Promise<ExtractRes
         },
       },
     });
-    const cv = await result.output;
+    const cv = reflowCv(await result.output);
     return { ok: true, cv };
   } catch (err) {
     if (NoObjectGeneratedError.isInstance(err)) {
