@@ -1,4 +1,7 @@
-- [x] Add faster text-layer PDF reading with original-document fallback for scans; preserve the extraction model and verbatim instructions.
-- [x] Move titled link fields beside personal details and display links in preview, PDF and Word headers.
-- [x] Remove the selection-based Add hyperlink button.
-- [x] Verify sample PDF upload, added link, preview and direct PDF/Word downloads; sample read in 11.5 seconds, six tests passed.
+- [x] Recruiter / candidate switch (candidates see no agency branding)
+- [x] Consultant details + agency footer in template and exports
+- [x] Image/scanned CV support (OCR)
+- [x] Before/after example on start screen
+- [x] Privacy & data page + note (contact email is a placeholder)
+- [x] Pricing page (free during beta; contact email is a placeholder)
+- [ ] Pull CVs from an ATS (next planned step)

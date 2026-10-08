@@ -1,4 +1,4 @@
-import type { CV, Template } from "./cv-schema";
+import { consultantLine, effectiveTemplate, footerLines, type CV, type Template } from "./cv-schema";
 
 function hexToRgb(hex: string): [number, number, number] {
   const m = hex.replace("#", "").match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
@@ -62,7 +62,8 @@ export function safeFileName(cv: CV, ext: string) {
 
 /* ---------------- PDF ---------------- */
 
-export async function buildPdf(cv: CV, t: Template): Promise<Blob> {
+export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
+  const t = effectiveTemplate(template);
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
@@ -143,7 +144,10 @@ export async function buildPdf(cv: CV, t: Template): Promise<Blob> {
   doc.setDrawColor(...accent);
   doc.setLineWidth(1.5);
   doc.line(M, y, M + CW, y);
-  y += 18;
+  y += 8;
+  const presented = consultantLine(t);
+  if (presented) text(presented, 8.5, { color: grey, center });
+  y += 10;
 
   // Never leave a heading at the bottom of a page: reserve room for the heading plus its first block.
   const section = (title: string, firstBlock = 40) => {
@@ -232,8 +236,9 @@ export async function buildPdf(cv: CV, t: Template): Promise<Blob> {
     doc.setFont(F, "normal");
     doc.setFontSize(8);
     doc.setTextColor(...grey);
-    const left = [t.agencyName, t.footerNote].filter(Boolean).join(" — ");
-    if (left) doc.text(left, M, H - 28);
+    const [left, second] = footerLines(t);
+    if (left) doc.text(left, M, second ? H - 34 : H - 28);
+    if (second) doc.text(second, M, H - 23);
     doc.text(`${i} / ${pages}`, M + CW, H - 28, { align: "right" });
   }
 
@@ -242,7 +247,8 @@ export async function buildPdf(cv: CV, t: Template): Promise<Blob> {
 
 /* ---------------- Word ---------------- */
 
-export async function buildDocx(cv: CV, t: Template): Promise<Blob> {
+export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
+  const t = effectiveTemplate(template);
   const d = await import("docx");
   const { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle, TabStopType, ImageRun, Footer, PageNumber, ExternalHyperlink } = d;
   const accent = t.accentColor.replace("#", "");
@@ -313,6 +319,8 @@ export async function buildDocx(cv: CV, t: Template): Promise<Blob> {
     ...(index === candidateLinks.length - 1 ? { border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: accent, space: 6 } } } : {}),
     children: [new ExternalHyperlink({ link: link.url, children: [new TextRun({ text: link.text, size: 18, color: accent, underline: {}, font })] })],
   })));
+  const presented = consultantLine(t);
+  if (presented) children.push(new Paragraph({ alignment: headAlign, spacing: { after: 160 }, children: [new TextRun({ text: presented, size: 17, color: "646C78", font })] }));
 
   const section = (title: string) =>
     children.push(
@@ -372,7 +380,7 @@ export async function buildDocx(cv: CV, t: Template): Promise<Blob> {
     children.push(body(items.join("  ·  ")));
   }
 
-  const footerLeft = [t.agencyName, t.footerNote].filter(Boolean).join(" — ");
+  const [footerLeft, footerSecond] = footerLines(t);
   const doc = new Document({
     sections: [
       {
@@ -387,6 +395,7 @@ export async function buildDocx(cv: CV, t: Template): Promise<Blob> {
                   new TextRun({ children: ["\t", PageNumber.CURRENT], size: 16, color: "646C78", font }),
                 ],
               }),
+              ...(footerSecond ? [new Paragraph({ children: [new TextRun({ text: footerSecond, size: 16, color: "646C78", font })] })] : []),
             ],
           }),
         },

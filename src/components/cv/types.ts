@@ -14,4 +14,5 @@ export type Candidate = {
   error: string | null;
   issues?: Issue[];
   checking?: boolean;
+  scanned?: boolean;
 };
