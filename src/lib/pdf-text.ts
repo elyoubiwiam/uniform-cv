@@ -18,7 +18,22 @@ export async function readPdfText(buffer: ArrayBuffer): Promise<{ text: string; 
       const page = await pdf.getPage(i);
       const [content, annotations] = await Promise.all([page.getTextContent(), page.getAnnotations()]);
       const items = content.items.filter((item) => "str" in item);
-      pages.push(items.map((item) => item.str + (item.hasEOL ? "\n" : " ")).join(""));
+      // Rebuild lines by position; a larger vertical gap marks a real paragraph break.
+      let out = "";
+      let lastY: number | null = null;
+      let lastH = 10;
+      for (const item of items) {
+        if (!item.str) continue;
+        const y = item.transform[5] ?? 0;
+        const h = Math.abs(item.transform[3] ?? 10) || 10;
+        if (lastY !== null && Math.abs(lastY - y) > h * 0.5) {
+          out = out.trimEnd() + (Math.abs(lastY - y) > Math.max(h, lastH) * 1.8 ? "\n\n" : "\n");
+        } else if (out && !/\s$/.test(out) && !/^\s/.test(item.str)) out += " ";
+        out += item.str;
+        lastY = y;
+        lastH = h;
+      }
+      pages.push(out);
       for (const annotation of annotations) {
         if (!annotation.url) continue;
         const rect = annotation.rect as number[];
