@@ -21,3 +21,4 @@
 - Recruiter details share one form between the start page and Template settings; why: both surfaces edit the same saved template without divergent fields.
 - Every PDF/Word download uses one spelling-review dialog and shared candidate selection; why: single and batch downloads prompt consistently without automatically accepting corrections.
 - Skill separator normalization is shared by category cleanup, editor blur, preview and exports; why: comma lists and explicit groups remain consistent without rewriting terms.
+- Recruiter logo background removal runs in the browser on flat edge-connected backdrops and produces a transparent PNG; why: preserves logo details without uploading branding to another service, and refuses uncertain patterned backgrounds.
