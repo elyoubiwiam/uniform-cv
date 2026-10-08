@@ -21,6 +21,10 @@ export function BeforeAfterSlider({ before, after }: { before: string; after: st
 
   return (
     <figure className="rounded-md border border-border bg-card p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="rounded-sm bg-foreground px-2 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-background">Before</span>
+        <span className="rounded-sm bg-accent px-2 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-accent-foreground">After</span>
+      </div>
       <div
         ref={ref}
         role="slider"
@@ -41,8 +45,6 @@ export function BeforeAfterSlider({ before, after }: { before: string; after: st
         <div className="absolute inset-0" style={{ clipPath: `inset(0 0 0 ${pos}%)` }}>
           <img src={after} alt="The same CV in a clean single-column structured layout" className="absolute inset-0 h-full w-full object-cover" draggable={false} />
         </div>
-        <span className="absolute left-3 top-3 rounded-sm bg-foreground px-2 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-background">Before</span>
-        <span className="absolute right-3 top-3 rounded-sm bg-accent px-2 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-accent-foreground">After</span>
         <div className="absolute inset-y-0" style={{ left: `${pos}%` }}>
           <div className="absolute inset-y-0 -ml-px w-0.5 bg-background shadow-[0_0_0_1px_rgba(0,0,0,0.15)]" />
           <div className="absolute top-1/2 -ml-5 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md">
