@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import cvBefore from "@/assets/cv-before.jpg";
 import cvAfter from "@/assets/cv-after.jpg";
+import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
 import { imageType, type ImageType } from "@/lib/file-kind";
 import { AudiencePicker } from "@/components/cv/AudiencePicker";
 import { useServerFn } from "@tanstack/react-start";
@@ -249,7 +250,7 @@ function Index() {
             <span className="hidden text-sm text-muted-foreground md:inline">{template.audience === "candidate" ? "Structure your CV" : "CV formatting for recruiters"}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Link to="/pricing" className="hidden px-2 text-sm text-muted-foreground hover:text-foreground sm:inline">Pricing</Link>
+            <span className="hidden px-2 text-sm text-muted-foreground sm:inline">Free</span>
             <Link to="/privacy" className="hidden px-2 text-sm text-muted-foreground hover:text-foreground sm:inline">Your data</Link>
             <TemplateSettings template={template} onChange={updateTemplate} />
             <Button size="sm" variant="outline" disabled={!done.length || exporting} onClick={() => exportBatch("docx")}>
@@ -274,15 +275,9 @@ function Index() {
               ? "Drop in your CV in any layout. It's rebuilt in a clean, structured format using your own words, so recruitment software and recruiters both read it correctly."
               : "Drop in candidate CVs in any layout. Each one is rebuilt in your standard template using the candidate's own words — review, tweak, and send PDFs or Word files to your client."}
           </p>
-          <figure className="mt-10 grid grid-cols-2 gap-4 rounded-md border border-border bg-card p-4">
-            {[["Before", cvBefore, "A cluttered two-column CV with icons and coloured boxes"], ["After Uniform", cvAfter, "The same CV in a clean single-column structured layout"]].map(([label, src, alt]) => (
-              <div key={label}>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-accent">{label}</p>
-                <img src={src} alt={alt} width={768} height={1024} className="aspect-[3/4] w-full rounded-sm object-cover" />
-              </div>
-            ))}
-            <figcaption className="col-span-2 text-center text-sm text-muted-foreground">Same words. One structure robots and recruiters both read. <span className="text-xs">(Fictional sample.)</span></figcaption>
-          </figure>
+          <div className="mt-10">
+            <BeforeAfterSlider before={cvBefore} after={cvAfter} />
+          </div>
           <div className="mt-10">
             <p className="mb-2 text-sm font-medium">1. Who's using Uniform?</p>
             <AudiencePicker template={template} onChange={updateTemplate} />
