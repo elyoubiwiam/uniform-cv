@@ -122,20 +122,23 @@ export function CvEditor({ cv, onChange }: { cv: CV; onChange: (cv: CV) => void 
       <Field label="Skills (comma separated)" value={cv.skills.join(", ")} onChange={(v) => set("skills", list(v))} multiline />
       <Field label="Languages (comma separated)" value={cv.languages.join(", ")} onChange={(v) => set("languages", list(v))} />
       <Field label="Certifications (comma separated)" value={cv.certifications.join(", ")} onChange={(v) => set("certifications", list(v))} />
-      <Field
-        label="Hyperlinks on text (one per line: linked text | https://…)"
-        value={(cv.hyperlinks ?? []).map((h) => `${h.text} | ${h.url}`).join("\n")}
-        onChange={(v) =>
-          set(
-            "hyperlinks",
-            lines(v).map((l) => {
-              const [text = "", ...url] = l.split("|");
-              return { text: text.trim(), url: url.join("|").trim() };
-            }),
-          )
-        }
-        multiline
-      />
+      <Heading onAdd={() => set("hyperlinks", [...(cv.hyperlinks ?? []), { text: "", url: "" }])}>Hyperlinks</Heading>
+      {(cv.hyperlinks ?? []).map((h, i) => {
+        const up = (patch: Partial<typeof h>) => set("hyperlinks", (cv.hyperlinks ?? []).map((x, j) => (j === i ? { ...x, ...patch } : x)));
+        return (
+          <div key={i} className="flex items-end gap-2">
+            <div className="flex-1">
+              <Field label="Title (the clickable text)" value={h.text} onChange={(v) => up({ text: v })} />
+            </div>
+            <div className="flex-1">
+              <Field label="Web address (https://…)" value={h.url} onChange={(v) => up({ url: v })} />
+            </div>
+            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => set("hyperlinks", (cv.hyperlinks ?? []).filter((_, j) => j !== i))}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      })}
     </div>
   );
 }
