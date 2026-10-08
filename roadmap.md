@@ -1,4 +1,4 @@
-- [ ] Speed up CV reading without sacrificing accuracy.
-- [ ] Move titled link fields beside personal details and display links in preview, PDF and Word headers.
-- [ ] Remove the selection-based Add hyperlink button.
-- [ ] Verify reading and direct exports end to end.
+- [x] Add faster text-layer PDF reading with original-document fallback for scans; preserve the extraction model and verbatim instructions.
+- [x] Move titled link fields beside personal details and display links in preview, PDF and Word headers.
+- [x] Remove the selection-based Add hyperlink button.
+- [x] Verify sample PDF upload, added link, preview and direct PDF/Word downloads; sample read in 11.5 seconds, six tests passed.
