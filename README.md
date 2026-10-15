@@ -1,14 +1,7 @@
 # CV Sorter Pro
 
-i want to build an AI agent, that will execute redundant tasks for businesses, in an efficient and simple way
 
 In recruitement, one redundant task is formatting CVs, for example taking a big load of CVs into one uniform format to send to the client
-
-both while pdf is preferred
-
-one standard format, but you can add a one client template if needed
-
-Format only
 
 Manual uploads — build the first version around batch CV upload, recruiter review, and PDF export, with Word available too.
 next step would be to pull them form ats
