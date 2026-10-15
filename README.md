@@ -50,4 +50,4 @@ Uniform is free to use and needs no account. A dedicated privacy and data page e
 
 ---
 
-Built by **Wiam El Youbi**.
+Built by **Wiam El Youbi**, [wiam-elyoubi.com](https://wiam-elyoubi.com).
