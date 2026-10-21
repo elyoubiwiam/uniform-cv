@@ -1,4 +1,4 @@
-type Reviewable = { id: string; cv: unknown; status: string };
+type Reviewable = { id: string; cv: unknown; status: string; checkedCv?: string };
 
 // Resolve the exact CVs covered by the reminder and the eventual download.
 export function downloadReviewIds(candidates: Reviewable[], candidateId?: string): string[] {
