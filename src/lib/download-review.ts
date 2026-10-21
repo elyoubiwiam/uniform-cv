@@ -7,3 +7,13 @@ export function downloadReviewIds(candidates: Reviewable[], candidateId?: string
   const approved = ready.filter((candidate) => candidate.status === "approved");
   return (approved.length ? approved : ready).map((candidate) => candidate.id);
 }
+
+// A CV only needs another check when its text changed since the last successful check.
+export function idsNeedingReview(candidates: Reviewable[], ids: string[]): string[] {
+  const byId = new Map(candidates.map((candidate) => [candidate.id, candidate]));
+  return ids.filter((id) => {
+    const candidate = byId.get(id);
+    if (!candidate || candidate.cv == null) return false;
+    return JSON.stringify(candidate.cv) !== candidate.checkedCv;
+  });
+}

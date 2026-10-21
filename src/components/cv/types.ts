@@ -14,5 +14,7 @@ export type Candidate = {
   error: string | null;
   issues?: Issue[];
   checking?: boolean;
+  // Snapshot of the CV text at the last successful spelling check, so we only re-prompt when the text changed since.
+  checkedCv?: string;
   scanned?: boolean;
 };

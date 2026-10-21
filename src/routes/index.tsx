@@ -21,7 +21,7 @@ import { CvEditor } from "@/components/cv/CvEditor";
 import { CvPreview } from "@/components/cv/CvPreview";
 import { PdfPageCount } from "@/components/cv/PdfPageCount";
 import { RecruiterDetails } from "@/components/cv/RecruiterDetails";
-import { downloadReviewIds } from "@/lib/download-review";
+import { downloadReviewIds, idsNeedingReview } from "@/lib/download-review";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -130,7 +130,7 @@ function Index() {
     patch(c.id, { checking: true });
     const res = await check({ data: { cv: c.cv } }).catch(() => null);
     if (res?.ok) {
-      patch(c.id, { checking: false, issues: res.issues.map((i) => ({ ...i, id: crypto.randomUUID() })) });
+      patch(c.id, { checking: false, checkedCv: JSON.stringify(c.cv), issues: res.issues.map((i) => ({ ...i, id: crypto.randomUUID() })) });
       if (!res.issues.length) toast.success("No spelling or grammar issues found.");
     } else {
       patch(c.id, { checking: false });
@@ -227,12 +227,18 @@ function Index() {
   const requestDownload = (kind: "pdf" | "docx", candidateId?: string) => {
     const ids = downloadReviewIds(candidates, candidateId);
     if (!ids.length) return;
+    if (!idsNeedingReview(candidates, ids).length) {
+      // Every CV was already checked and the text hasn't changed since — download straight away.
+      void exportBatch(kind, ids);
+      return;
+    }
     setDownloadRequest({ kind, ids });
   };
 
   const checkBeforeDownload = async () => {
     if (!downloadRequest) return;
-    const list = candidates.filter((candidate) => downloadRequest.ids.includes(candidate.id) && candidate.cv);
+    const needs = idsNeedingReview(candidates, downloadRequest.ids);
+    const list = candidates.filter((candidate) => needs.includes(candidate.id) && candidate.cv);
     setDownloadRequest(null);
     if (!list.length) return;
     setSelectedId(list[0]?.id ?? null);
@@ -524,7 +530,7 @@ function Index() {
           <DialogHeader>
             <DialogTitle>Check spelling before downloading?</DialogTitle>
             <DialogDescription>
-              {downloadRequest && downloadRequest.ids.length > 1 ? `Check spelling, grammar and terminology in all ${downloadRequest.ids.length} CVs before sharing them.` : "Check spelling, grammar and terminology before sharing this CV."} You choose which suggestions to accept; nothing is corrected automatically.
+              {downloadRequest && downloadRequest.ids.length > 1 ? `Check spelling, grammar and terminology in the ${idsNeedingReview(candidates, downloadRequest.ids).length} CVs that changed before sharing them.` : "Check spelling, grammar and terminology before sharing this CV."} CVs already checked and unchanged are downloaded without asking again. You choose which suggestions to accept; nothing is corrected automatically.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
