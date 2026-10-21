@@ -501,7 +501,7 @@ function Index() {
                   </TabsList>
                 </Tabs>
                 <div className={`hidden gap-8 lg:grid ${desktopView === "compare" ? "lg:grid-cols-2" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"}`}>
-                  <div className={desktopView === "compare" ? "" : "max-h-[calc(100vh-180px)] overflow-y-auto pr-2"}>
+                  <div className="min-w-0">
                     {desktopView === "edit" ? (
                       <CvEditor cv={selected.cv} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} />
                     ) : (

@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- CV editor fields auto-size on text, width, visibility and font changes, and the editor uses normal page scrolling; why: hidden desktop panels must not retain clipped measurements and all content must stay reachable.
 - Preview PDF page counts are read from the actual client-generated export; why: matches downloaded pagination and updates with CV/template changes.
 - Compare mode renders every page of both the original and generated PDF through one shared PDF.js viewer with independent navigation; why: keeps page scale, boundaries, zoom and page controls identical.
 - CV extraction runs in a server function (`src/lib/cv.functions.ts`) calling Lovable AI Gateway Responses with a strict zod schema; why: keeps the key server-side and output uniform.
