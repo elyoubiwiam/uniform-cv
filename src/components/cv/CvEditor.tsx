@@ -166,7 +166,7 @@ function TimeSelect({ value, onChange, label }: { value: string; onChange: (v: s
   return <Select value={value} onValueChange={onChange}><SelectTrigger className="w-24" aria-label={label}><SelectValue /></SelectTrigger><SelectContent className="max-h-60">{TIMES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select>;
 }
 
-function AvailabilityField({ value = {}, onChange }: { value?: Availability; onChange: (v: Availability) => void }) {
+function AvailabilityField({ value = {}, onChange }: { value?: Availability | undefined; onChange: (v: Availability) => void }) {
   const setDay = (day: Weekday, ranges: TimeRange[] | undefined) => {
     const next = { ...value };
     if (ranges) next[day] = ranges; else delete next[day];
