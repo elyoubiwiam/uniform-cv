@@ -507,9 +507,6 @@ export async function buildDocx(cv: CV, template: Template, cover?: RecruiterCov
       for (const paragraph of cvParagraphs(coverContent.notes)) coverChildren.push(new Paragraph({ spacing: { after: 160 }, children: paragraph.split("\n").flatMap((line, i) => [new TextRun({ text: line, ...(i ? { break: 1 } : {}), size: 20, font })]) }));
     }
     if (coverContent.recruiter.length) coverChildren.push(coverText("Presented by", 22, true), ...coverContent.recruiter.map((line) => coverText(line, 18)));
-    const first = children[0];
-    if (first) first.root.push(new d.PageBreak());
-    // PageBreak must precede, rather than follow, the first CV heading.
     children.unshift(...coverChildren, new Paragraph({ children: [new d.PageBreak()] }));
   }
 

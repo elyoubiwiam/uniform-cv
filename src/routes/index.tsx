@@ -260,7 +260,7 @@ function Index() {
       for (const c of list) {
         if (!c.cv) continue;
         const separated = separateCategories(c.cv);
-        const blob = kind === "pdf" ? await buildPdf(separated, template) : await buildDocx(separated, template);
+        const blob = kind === "pdf" ? await buildPdf(separated, template, c.cover) : await buildDocx(separated, template, c.cover);
         let name = safeFileName(separated, kind);
         let n = 2;
         while (used.has(name)) name = safeFileName(separated, kind).replace(`.${kind}`, `_${n++}.${kind}`);
@@ -485,13 +485,13 @@ function Index() {
                     <TabsTrigger value="edit">Edit</TabsTrigger>
                     <TabsTrigger value="compare">Compare</TabsTrigger>
                   </TabsList>
-                  <TabsContent value="side"><CvPreview cv={selected.cv} template={template} issues={liveIssues(selected.cv, selected.issues ?? [])} /></TabsContent>
-                  <TabsContent value="edit"><CvEditor cv={selected.cv} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} /></TabsContent>
+                  <TabsContent value="side"><CvPreview cv={selected.cv} template={template} cover={selected.cover} issues={liveIssues(selected.cv, selected.issues ?? [])} /></TabsContent>
+                  <TabsContent value="edit"><CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={template.audience === "recruiter" ? (cover) => patch(selected.id, { cover }) : undefined} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} /></TabsContent>
                   <TabsContent value="compare" className="space-y-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original</p>
                     <OriginalView file={selected.file} />
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uniformed<PdfPageCount cv={selected.cv} template={template} /></p>
-                    <GeneratedPdfView cv={selected.cv} template={template} />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uniformed<PdfPageCount cv={selected.cv} template={template} cover={selected.cover} /></p>
+                    <GeneratedPdfView cv={selected.cv} template={template} cover={selected.cover} />
                   </TabsContent>
                 </Tabs>
                 <Tabs value={desktopView} onValueChange={(v) => setDesktopView(v as "edit" | "compare")} className="hidden lg:block">
@@ -503,7 +503,7 @@ function Index() {
                 <div className={`hidden gap-8 lg:grid ${desktopView === "compare" ? "lg:grid-cols-2" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"}`}>
                   <div className="min-w-0">
                     {desktopView === "edit" ? (
-                      <CvEditor cv={selected.cv} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} />
+                      <CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={template.audience === "recruiter" ? (cover) => patch(selected.id, { cover }) : undefined} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} />
                     ) : (
                       <>
                         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original · {selected.file.name}</p>
@@ -512,11 +512,11 @@ function Index() {
                     )}
                   </div>
                   <div className="sticky top-20 self-start">
-                    {desktopView === "compare" && <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uniformed<PdfPageCount cv={selected.cv} template={template} /></p>}
+                    {desktopView === "compare" && <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uniformed<PdfPageCount cv={selected.cv} template={template} cover={selected.cover} /></p>}
                     {desktopView === "compare" ? (
-                      <GeneratedPdfView cv={selected.cv} template={template} />
+                      <GeneratedPdfView cv={selected.cv} template={template} cover={selected.cover} />
                     ) : (
-                      <CvPreview cv={selected.cv} template={template} issues={liveIssues(selected.cv, selected.issues ?? [])} />
+                      <CvPreview cv={selected.cv} template={template} cover={selected.cover} issues={liveIssues(selected.cv, selected.issues ?? [])} />
                     )}
                   </div>
                 </div>

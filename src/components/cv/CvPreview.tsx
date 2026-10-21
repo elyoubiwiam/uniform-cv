@@ -4,6 +4,8 @@ import { allLinks, contactLine, dateRange, headerLinks, linkSegments } from "@/l
 import { cvParagraphs } from "@/lib/cv-layout";
 import { normalizeSkills } from "@/lib/cv-skills";
 import { parseFormatting } from "@/lib/cv-format";
+import type { RecruiterCover } from "@/lib/cv-cover";
+import { RecruiterCoverPreview } from "./RecruiterCoverPreview";
 
 /** On-screen preview of the export. Uses the agency's chosen accent (user data, not a theme colour). */
 function Marked({ text, issues }: { text: string; issues: Issue[] }) {
@@ -24,7 +26,7 @@ function Marked({ text, issues }: { text: string; issues: Issue[] }) {
   );
 }
 
-export function CvPreview({ cv, template: raw, issues = [] }: { cv: CV; template: Template; issues?: Issue[] }) {
+export function CvPreview({ cv, template: raw, issues = [], cover }: { cv: CV; template: Template; issues?: Issue[]; cover?: RecruiterCover }) {
   const template = effectiveTemplate(raw);
   const presented = consultantLine(template);
   const [foot1, foot2] = footerLines(template);
@@ -53,6 +55,8 @@ export function CvPreview({ cv, template: raw, issues = [] }: { cv: CV; template
     </section>
   );
   return (
+    <div className="space-y-6">
+     <RecruiterCoverPreview cv={cv} template={template} cover={cover} />
      <div className="mx-auto flex aspect-[1/1.414] w-full max-w-[640px] flex-col overflow-hidden rounded-sm bg-card p-10 text-[12px] leading-normal text-card-foreground shadow-[0_1px_3px_rgb(0_0_0/0.08),0_12px_40px_-12px_rgb(0_0_0/0.18)]" style={{ fontFamily }}>
        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <div className={center ? "flex flex-col-reverse items-center gap-3 text-center" : "flex items-start justify-between gap-4"}>
@@ -120,6 +124,7 @@ export function CvPreview({ cv, template: raw, issues = [] }: { cv: CV; template
            </div>
          </footer>
        )}
+    </div>
     </div>
   );
 }
