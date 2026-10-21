@@ -1,5 +1,5 @@
 import { Bold, Check, Italic, Plus, Trash2, Underline, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toggleMark, type Mark } from "@/lib/cv-format";
 import { normalizeSkills } from "@/lib/cv-skills";
 import { applyFix, type Issue } from "@/lib/proofread";
@@ -8,6 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+function AutoTextarea({ value, className, ...props }: React.ComponentProps<typeof Textarea>) {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  const resize = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+  useLayoutEffect(resize, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+  return <Textarea ref={ref} value={value} onInput={resize} {...props} className={cn("resize-none overflow-hidden", className)} />;
+}
 
 const lines = (s: string) => s.split("\n").map((l) => l.trim()).filter(Boolean);
 const list = (s: string) => s.split(",").map((l) => l.trim()).filter(Boolean);
@@ -18,7 +31,7 @@ function Field({ label, value, onChange, multiline, rich }: { label: string; val
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       {multiline ? (
-        <Textarea data-rich={rich || undefined} value={value ?? ""} onChange={(e) => onChange(e.target.value)} rows={4} />
+        <AutoTextarea data-rich={rich || undefined} value={value ?? ""} onChange={(e) => onChange(e.target.value)} rows={4} />
       ) : (
         <Input value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
       )}
@@ -51,7 +64,7 @@ function DraftField({ label, items, sep, parse, onChange, multiline, rich }: { l
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       {multiline ? (
-        <Textarea data-rich={rich || undefined} value={draft} onChange={(e) => change(e.target.value)} onBlur={commit} rows={4} />
+        <AutoTextarea data-rich={rich || undefined} value={draft} onChange={(e) => change(e.target.value)} onBlur={commit} rows={4} />
       ) : (
         <Input value={draft} onChange={(e) => change(e.target.value)} onBlur={commit} />
       )}
@@ -65,7 +78,7 @@ function SkillsField({ skills, onChange }: { skills: string[]; onChange: (skills
   useEffect(() => { setDraft(value); }, [value]);
   return <div className="space-y-1">
     <Label htmlFor="cv-skills" className="text-xs text-muted-foreground">Skills</Label>
-    <Textarea id="cv-skills" rows={5} value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => {
+    <AutoTextarea id="cv-skills" rows={5} value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => {
       const normalized = normalizeSkills([draft]);
       setDraft(normalized.join("\n"));
       onChange(normalized);

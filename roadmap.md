@@ -18,3 +18,8 @@
 - [x] Brand icon in the navbar and as the browser-tab icon
 - [x] Compare mode shows equally sized PDF pages from the original and generated PDFs, with independent page navigation; Template button removed from header; logo links home
 - [x] Verify compare page controls and document sizing at desktop, tablet and mobile widths
+- [x] Auto-sizing editor text boxes that fit their text and grow as lines are added
+- [ ] Recruiter cover page on formatted exports: recruiter details + logo on a first page
+- [ ] New candidate fields: notice period, current salary, salary expectations (£), current/last employer, able to relocate
+- [ ] Notes box for the recruiter's own notes
+- [ ] Pull CVs from an ATS (next planned step)
