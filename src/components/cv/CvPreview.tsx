@@ -3,6 +3,7 @@ import type { Issue } from "@/lib/proofread";
 import { allLinks, contactLine, dateRange, headerLinks, linkSegments } from "@/lib/cv-export";
 import { cvParagraphs } from "@/lib/cv-layout";
 import { normalizeSkills } from "@/lib/cv-skills";
+import { parseFormatting } from "@/lib/cv-format";
 
 /** On-screen preview of the export. Uses the agency's chosen accent (user data, not a theme colour). */
 function Marked({ text, issues }: { text: string; issues: Issue[] }) {
@@ -31,9 +32,13 @@ export function CvPreview({ cv, template: raw, issues = [] }: { cv: CV; template
   const links = allLinks(cv, template);
   const L = ({ text }: { text: string }) => (
     <>
-      {linkSegments(text, links).map((s, i) =>
-        s.url ? <a key={i} href={s.url} target="_blank" rel="noreferrer" className="underline" style={accent}>{s.text}</a> : <Marked key={i} text={s.text} issues={issues} />,
-      )}
+      {parseFormatting(text).map((run, r) => (
+        <span key={r} className={[run.bold && "font-bold", run.italic && "italic", run.underline && "underline"].filter(Boolean).join(" ") || undefined}>
+          {linkSegments(run.text, links).map((s, i) =>
+            s.url ? <a key={i} href={s.url} target="_blank" rel="noreferrer" className="underline" style={accent}>{s.text}</a> : <Marked key={i} text={s.text} issues={issues} />,
+          )}
+        </span>
+      ))}
     </>
   );
   const center = template.align === "center";
