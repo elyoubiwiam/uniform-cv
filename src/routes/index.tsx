@@ -116,6 +116,7 @@ function Index() {
   const [template, setTemplate] = useState<Template>(defaultTemplate);
   const [desktopView, setDesktopView] = useState<"edit" | "compare">("edit");
   const [dragging, setDragging] = useState(false);
+  const [started, setStarted] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [downloadRequest, setDownloadRequest] = useState<{ kind: "pdf" | "docx"; ids: string[] } | null>(null);
   const [reviewingDownloads, setReviewingDownloads] = useState(false);
@@ -303,7 +304,7 @@ function Index() {
         </div>
       </header>
 
-      {candidates.length === 0 ? (
+      {candidates.length === 0 || (template.audience === "recruiter" && !started) ? (
         <main className="mx-auto max-w-3xl px-6 py-20">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">Format only — no rewriting</p>
           <h1 className="mt-3 font-display text-5xl font-medium leading-[1.05] tracking-tight sm:text-6xl">
@@ -337,6 +338,21 @@ function Index() {
           )}
           <p className="mt-8 text-sm font-medium">{template.audience === "recruiter" ? "4" : "3"}. Add {template.audience === "candidate" ? "your CV" : "your CVs"}</p>
           <DropZone dragging={dragging} setDragging={setDragging} onFiles={addFiles} inputRef={inputRef} big />
+          {template.audience === "recruiter" && candidates.length > 0 && (
+            <div className="mt-4 space-y-3 rounded-md border border-border bg-card p-4">
+              <p className="text-sm font-medium">{candidates.length} CV{candidates.length > 1 ? "s" : ""} uploaded — check the details above, then start formatting.</p>
+              <ul className="space-y-1">
+                {candidates.map((c) => (
+                  <li key={c.id} className="flex items-center gap-2 text-sm">
+                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1 truncate">{c.file.name}</span>
+                    <button className="text-muted-foreground hover:text-destructive" aria-label={`Remove ${c.file.name}`} onClick={() => { setCandidates((cs) => cs.filter((x) => x.id !== c.id)); setSelectedId((s) => (s === c.id ? null : s)); }}><Trash2 className="h-4 w-4" /></button>
+                  </li>
+                ))}
+              </ul>
+              <Button onClick={() => { setSelectedId((s) => s ?? candidates[0]?.id ?? null); setStarted(true); window.scrollTo({ top: 0 }); }}>Start formatting</Button>
+            </div>
+          )}
           <ol className="mt-10 grid gap-4 text-sm sm:grid-cols-3">
             {["Upload PDFs or Word files in bulk", "Review each CV side by side", "Download each as PDF or Word"].map((s, i) => (
               <li key={s} className="border-t border-foreground pt-3">
@@ -369,7 +385,7 @@ function Index() {
             <DropZone dragging={dragging} setDragging={setDragging} onFiles={addFiles} inputRef={inputRef} />
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{progress.finished} of {progress.total} processed · {approved.length} approved</span>
-              <button className="hover:text-destructive" onClick={() => { setCandidates([]); setSelectedId(null); }}>Clear all</button>
+              <button className="hover:text-destructive" onClick={() => { setCandidates([]); setSelectedId(null); setStarted(false); }}>Clear all</button>
             </div>
             <ul className="space-y-1">
               {candidates.map((c) => (
