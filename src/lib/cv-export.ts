@@ -110,7 +110,7 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
     const maxW = CW - (opts.indent ?? 0);
     const setStyle = (b?: boolean, i?: boolean) => doc.setFont(F, b && i ? "bolditalic" : b ? "bold" : i ? "italic" : "normal");
     for (const rawLine of paragraph.split("\n")) {
-      type W = { text: string; bold?: boolean; italic?: boolean; underline?: boolean; url?: string; w: number };
+      type W = { text: string; bold?: boolean | undefined; italic?: boolean | undefined; underline?: boolean | undefined; url?: string | undefined; w: number };
       const words: W[] = [];
       for (const run of parseFormatting(rawLine)) for (const seg of linkSegments(run.text, links)) for (const piece of seg.text.split(/(\s+)/)) {
         if (!piece) continue;
@@ -118,22 +118,23 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
         setStyle(bold, run.italic);
         words.push({ text: piece, bold, italic: run.italic, underline: run.underline, url: seg.url, w: doc.getTextWidth(piece) });
       }
-      const rows: W[][] = [[]];
+      const rows: W[][] = [];
+      let row: W[] = [];
+      rows.push(row);
       let used = 0;
       for (const word of words) {
         const space = /^\s+$/.test(word.text);
-        if (!space && used + word.w > maxW && rows[rows.length - 1].length) {
-          const row = rows[rows.length - 1];
-          while (row.length && /^\s+$/.test(row[row.length - 1].text)) row.pop();
-          rows.push([]); used = 0;
+        if (!space && used + word.w > maxW && row.length) {
+          while (row.length && /^\s+$/.test(row[row.length - 1]?.text ?? "")) row.pop();
+          row = []; rows.push(row); used = 0;
         }
-        if (space && !rows[rows.length - 1].length) continue;
-        rows[rows.length - 1].push(word); used += word.w;
+        if (space && !row.length) continue;
+        row.push(word); used += word.w;
       }
-      for (const row of rows) {
+      for (const line of rows) {
         ensure(lh);
         let x = x0;
-        for (const word of row) {
+        for (const word of line) {
           setStyle(word.bold, word.italic);
           doc.setTextColor(...(word.url ? accent : opts.color ?? ink));
           doc.text(word.text, x, y + size);

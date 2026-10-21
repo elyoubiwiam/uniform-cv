@@ -1,5 +1,5 @@
 /** Inline formatting stored in CV text as markers: **bold**, *italic*, __underline__. */
-export type Styled = { text: string; bold?: boolean; italic?: boolean; underline?: boolean };
+export type Styled = { text: string; bold?: boolean | undefined; italic?: boolean | undefined; underline?: boolean | undefined };
 export type Mark = "bold" | "italic" | "underline";
 export const MARKERS: Record<Mark, string> = { bold: "**", italic: "*", underline: "__" };
 

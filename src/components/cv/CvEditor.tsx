@@ -100,7 +100,7 @@ function FormatBar({ target }: { target: React.RefObject<HTMLTextAreaElement | n
 export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onChange: (cv: CV) => void; issues?: Issue[]; onIssues?: (i: Issue[]) => void }) {
   const set = <K extends keyof CV>(k: K, v: CV[K]) => onChange({ ...cv, [k]: v });
   const target = useRef<HTMLTextAreaElement | null>(null);
-  const rich = (el: EventTarget) => el instanceof HTMLTextAreaElement && el.dataset.rich ? el : null;
+  const rich = (el: EventTarget) => el instanceof HTMLTextAreaElement && el.dataset["rich"] ? el : null;
   return (
     <div className="space-y-3"
       onFocus={(e) => { const el = rich(e.target); if (el) target.current = el; }}
