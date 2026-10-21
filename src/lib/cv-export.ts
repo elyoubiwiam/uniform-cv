@@ -3,6 +3,7 @@ import { footerLogoSize } from "./cv-footer";
 import { cvParagraphs, cvSpacing } from "./cv-layout";
 import { hasFormatting, parseFormatting } from "./cv-format";
 import { normalizeSkills } from "./cv-skills";
+import { recruiterCoverContent, type RecruiterCover } from "./cv-cover";
 
 function hexToRgb(hex: string): [number, number, number] {
   const m = hex.replace("#", "").match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
@@ -66,7 +67,7 @@ export function safeFileName(cv: CV, ext: string) {
 
 /* ---------------- PDF ---------------- */
 
-export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
+export async function buildPdf(cv: CV, template: Template, cover?: RecruiterCover): Promise<Blob> {
   const t = effectiveTemplate(template);
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -189,6 +190,34 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
     }
     y += opts.gap ?? 0;
   };
+
+  const coverContent = recruiterCoverContent(cv, t, cover);
+  if (coverContent) {
+    text(t.agencyName || "Candidate presentation", 18, { bold: true, color: accent, gap: 18 });
+    if (t.logoDataUrl && logo) {
+      doc.addImage(t.logoDataUrl, M, y, logo.width * 2, logo.height * 2);
+      y += logo.height * 2 + 24;
+    }
+    text("Candidate overview", 10, { color: grey, gap: 8 });
+    text(coverContent.name, 24, { bold: true, gap: 20 });
+    for (const [label, value] of coverContent.rows) {
+      ensure(42);
+      text(label, 9, { color: grey });
+      text(value, 11, { gap: 12 });
+    }
+    if (coverContent.notes) {
+      ensure(48);
+      text("Recruiter notes", 11, { bold: true, gap: 8 });
+      text(coverContent.notes, 10, { gap: 20 });
+    }
+    if (coverContent.recruiter.length) {
+      ensure(36);
+      text("Presented by", 10, { bold: true, color: accent, gap: 6 });
+      for (const line of coverContent.recruiter) text(line, 9, { color: grey });
+    }
+    doc.addPage();
+    y = M;
+  }
 
   // Header band
   if (t.agencyName) {
@@ -313,7 +342,7 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
 
 /* ---------------- Word ---------------- */
 
-export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
+export async function buildDocx(cv: CV, template: Template, cover?: RecruiterCover): Promise<Blob> {
   const t = effectiveTemplate(template);
   const d = await import("docx");
   const { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle, TabStopType, ImageRun, Footer, ExternalHyperlink } = d;
@@ -464,6 +493,21 @@ export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
     if (!items.length) continue;
     section(title);
     children.push(...body(items.join("  ·  ")));
+  }
+
+  const coverContent = recruiterCoverContent(cv, t, cover);
+  if (coverContent) {
+    const coverChildren: InstanceType<typeof Paragraph>[] = [];
+    const coverText = (text: string, size = 22, bold = false) => new Paragraph({ spacing: { after: 160 }, children: [new TextRun({ text, size, bold, font })] });
+    coverChildren.push(coverText(t.agencyName || "Candidate presentation", 36, true), ...footerBranding);
+    coverChildren.push(coverText("Candidate overview", 20), coverText(coverContent.name, 48, true));
+    for (const [label, value] of coverContent.rows) coverChildren.push(coverText(label, 18, true), coverText(value));
+    if (coverContent.notes) {
+      coverChildren.push(coverText("Recruiter notes", 22, true));
+      for (const paragraph of cvParagraphs(coverContent.notes)) coverChildren.push(new Paragraph({ spacing: { after: 160 }, children: paragraph.split("\n").flatMap((line, i) => [new TextRun({ text: line, ...(i ? { break: 1 } : {}), size: 20, font })]) }));
+    }
+    if (coverContent.recruiter.length) coverChildren.push(coverText("Presented by", 22, true), ...coverContent.recruiter.map((line) => coverText(line, 18)));
+    children.unshift(...coverChildren, new Paragraph({ children: [new d.PageBreak()] }));
   }
 
   const [footerLeft, footerSecond] = footerLines(t);

@@ -1,40 +1,53 @@
-import { Bold, Check, Italic, Plus, Trash2, Underline, X } from "lucide-react";
+import { ArrowDown, Bold, Check, Italic, Plus, Trash2, Underline, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toggleMark, type Mark } from "@/lib/cv-format";
 import { normalizeSkills } from "@/lib/cv-skills";
 import { applyFix, type Issue } from "@/lib/proofread";
 import type { CV } from "@/lib/cv-schema";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { emptyRecruiterCover, type RecruiterCover } from "@/lib/cv-cover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function AutoTextarea({ value, className, ...props }: React.ComponentProps<typeof Textarea>) {
   const ref = useRef<HTMLTextAreaElement | null>(null);
   const resize = () => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || el.getBoundingClientRect().width === 0) return;
+    const { borderTopWidth, borderBottomWidth } = getComputedStyle(el);
     el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    el.style.height = `${el.scrollHeight + parseFloat(borderTopWidth) + parseFloat(borderBottomWidth)}px`;
   };
   useLayoutEffect(resize, [value]); // eslint-disable-line react-hooks/exhaustive-deps
-  return <Textarea ref={ref} value={value} onInput={resize} {...props} className={cn("resize-none overflow-hidden", className)} />;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let width = 0;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry && entry.contentRect.width !== width) {
+        width = entry.contentRect.width;
+        resize();
+      }
+    });
+    observer.observe(el);
+    let active = true;
+    void document.fonts.ready.then(() => { if (active) resize(); });
+    return () => { active = false; observer.disconnect(); };
+  }, []);
+  return <Textarea ref={ref} value={value} onInput={resize} {...props} className={cn("min-h-10 resize-none overflow-hidden leading-6", className)} />;
 }
 
 const lines = (s: string) => s.split("\n").map((l) => l.trim()).filter(Boolean);
 const list = (s: string) => s.split(",").map((l) => l.trim()).filter(Boolean);
 const orNull = (s: string) => (s.trim() ? s : null);
 
-function Field({ label, value, onChange, multiline, rich }: { label: string; value: string | null; onChange: (v: string) => void; multiline?: boolean; rich?: boolean }) {
+function Field({ label, value, onChange, rich }: { label: string; value: string | null; onChange: (v: string) => void; multiline?: boolean; rich?: boolean }) {
   return (
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
-      {multiline ? (
-        <AutoTextarea data-rich={rich || undefined} value={value ?? ""} onChange={(e) => onChange(e.target.value)} rows={4} />
-      ) : (
-        <Input value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
-      )}
+      <AutoTextarea data-rich={rich || undefined} value={value ?? ""} onChange={(e) => onChange(e.target.value)} rows={1} aria-label={label} />
     </div>
   );
 }
@@ -52,7 +65,7 @@ function Heading({ children, onAdd }: { children: React.ReactNode; onAdd?: () =>
   );
 }
 
-function DraftField({ label, items, sep, parse, onChange, multiline, rich }: { label: string; items: string[]; sep: string; parse: (s: string) => string[]; onChange: (v: string[]) => void; multiline?: boolean; rich?: boolean }) {
+function DraftField({ label, items, sep, parse, onChange, rich }: { label: string; items: string[]; sep: string; parse: (s: string) => string[]; onChange: (v: string[]) => void; multiline?: boolean; rich?: boolean }) {
   const value = items.join(sep);
   const [draft, setDraft] = useState(value);
   useEffect(() => {
@@ -63,11 +76,7 @@ function DraftField({ label, items, sep, parse, onChange, multiline, rich }: { l
   return (
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
-      {multiline ? (
-        <AutoTextarea data-rich={rich || undefined} value={draft} onChange={(e) => change(e.target.value)} onBlur={commit} rows={4} />
-      ) : (
-        <Input value={draft} onChange={(e) => change(e.target.value)} onBlur={commit} />
-      )}
+      <AutoTextarea data-rich={rich || undefined} value={draft} onChange={(e) => change(e.target.value)} onBlur={commit} rows={1} aria-label={label} />
     </div>
   );
 }
@@ -78,7 +87,7 @@ function SkillsField({ skills, onChange }: { skills: string[]; onChange: (skills
   useEffect(() => { setDraft(value); }, [value]);
   return <div className="space-y-1">
     <Label htmlFor="cv-skills" className="text-xs text-muted-foreground">Skills</Label>
-    <AutoTextarea id="cv-skills" rows={5} value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => {
+    <AutoTextarea id="cv-skills" rows={1} value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => {
       const normalized = normalizeSkills([draft]);
       setDraft(normalized.join("\n"));
       onChange(normalized);
@@ -88,7 +97,9 @@ function SkillsField({ skills, onChange }: { skills: string[]; onChange: (skills
 
 function applyMark(el: HTMLTextAreaElement, mark: Mark) {
   const next = toggleMark(el.value, el.selectionStart, el.selectionEnd, mark);
-  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(el, next.value);
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+  if (!setter) return;
+  setter.call(el, next.value);
   el.dispatchEvent(new Event("input", { bubbles: true }));
   el.focus();
   requestAnimationFrame(() => el.setSelectionRange(next.start, next.end));
@@ -97,7 +108,7 @@ function applyMark(el: HTMLTextAreaElement, mark: Mark) {
 function FormatBar({ target }: { target: React.RefObject<HTMLTextAreaElement | null> }) {
   const tools = [["bold", Bold, "Bold (Ctrl+B)"], ["italic", Italic, "Italic (Ctrl+I)"], ["underline", Underline, "Underline (Ctrl+U)"]] as const;
   return (
-    <div className="sticky top-0 z-10 flex items-center gap-1 rounded-md border border-border bg-card p-1 shadow-sm">
+    <div className="sticky top-16 z-10 flex items-center gap-1 rounded-md border border-border bg-card p-1 shadow-sm">
       {tools.map(([mark, Icon, label]) => (
         <Button key={mark} type="button" variant="ghost" size="icon" aria-label={label} title={label}
           onMouseDown={(e) => e.preventDefault()}
@@ -110,12 +121,15 @@ function FormatBar({ target }: { target: React.RefObject<HTMLTextAreaElement | n
   );
 }
 
-export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onChange: (cv: CV) => void; issues?: Issue[]; onIssues?: (i: Issue[]) => void }) {
+export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverChange, anonymise = false }: { cv: CV; onChange: (cv: CV) => void; issues?: Issue[]; onIssues?: (i: Issue[]) => void; cover?: RecruiterCover | undefined; onCoverChange?: ((cover: RecruiterCover) => void) | undefined; anonymise?: boolean }) {
+  const details = cover ?? emptyRecruiterCover;
+  const coverField = (key: Exclude<keyof RecruiterCover, "relocation">, label: string, fallback = "") => <Field label={label} value={details[key] || fallback} onChange={(value) => onCoverChange?.({ ...details, [key]: value })} />;
   const set = <K extends keyof CV>(k: K, v: CV[K]) => onChange({ ...cv, [k]: v });
+  const editor = useRef<HTMLDivElement | null>(null);
   const target = useRef<HTMLTextAreaElement | null>(null);
   const rich = (el: EventTarget) => el instanceof HTMLTextAreaElement && el.dataset["rich"] ? el : null;
   return (
-    <div className="space-y-3"
+    <div ref={editor} className="space-y-3"
       onFocus={(e) => { const el = rich(e.target); if (el) target.current = el; }}
       onKeyDown={(e) => {
         const el = rich(e.target);
@@ -123,6 +137,32 @@ export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onCh
         if (el && mark && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) { e.preventDefault(); applyMark(el, mark); }
       }}>
       <FormatBar target={target} />
+      <nav aria-label="CV sections" className="flex flex-wrap gap-1 border-b border-border pb-2">
+        {[...(onCoverChange ? ["Recruiter cover page"] : []), "Experience", "Education", "Skills", "Interests & hobbies"].map((section) => (
+          <Button key={section} variant="ghost" size="sm" onClick={() => {
+            const heading = Array.from(editor.current?.querySelectorAll("h3") ?? []).find((el) => el.textContent === section);
+            heading?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+          }}><ArrowDown className="h-3 w-3" />{section}</Button>
+        ))}
+      </nav>
+      {onCoverChange && <section className="space-y-3">
+        <Heading>Recruiter cover page</Heading>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {coverField("candidateName", "Name of candidate", cv.fullName)}
+          {coverField("noticePeriod", "Notice period")}
+          {coverField("currentSalary", "Current salary (£)")}
+          {coverField("expectedSalary", "Salary expectations (£)")}
+          {coverField("employer", "Current / last employer", cv.experience[0]?.company ?? "")}
+          {coverField("location", "Candidate location", cv.location ?? "")}
+          <div className="space-y-1"><Label className="text-xs text-muted-foreground">Able to relocate if needed</Label>
+            <Select value={details.relocation || "unspecified"} onValueChange={(value) => {
+              if (value === "yes" || value === "no" || value === "discuss" || value === "unspecified") onCoverChange({ ...details, relocation: value === "unspecified" ? "" : value });
+            }}><SelectTrigger aria-label="Able to relocate if needed"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="unspecified">Not provided</SelectItem><SelectItem value="yes">Yes</SelectItem><SelectItem value="no">No</SelectItem><SelectItem value="discuss">Open to discussion</SelectItem></SelectContent></Select>
+          </div>
+        </div>
+        {coverField("notes", "Recruiter notes")}
+        {anonymise && <p className="text-xs text-muted-foreground">The anonymous cover uses initials and excludes employer, location and recruiter notes.</p>}
+      </section>}
       {issues.length > 0 && (
         <div className="space-y-2 rounded-md border border-destructive/40 bg-card p-3">
           <p className="text-xs text-muted-foreground">{issues.length} possible spelling/grammar issue{issues.length > 1 ? "s" : ""}, underlined in red in the preview. Nothing is changed unless you accept it — or just edit the text below.</p>

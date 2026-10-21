@@ -53,7 +53,7 @@ export function RecruiterDetails({ template, onChange }: { template: Template; o
               <p className="pt-2 text-xs font-semibold uppercase tracking-[0.15em] text-accent">Agency</p>
               {field("agencyName", "Agency or client name", "e.g. Northbridge Talent")}
               <div className="space-y-1">
-                  <Label htmlFor={`${id}-logo`}>Footer logo (PNG, JPG or WEBP)</Label>
+                  <Label htmlFor={`${id}-logo`}>Recruiter logo (cover page and footer)</Label>
                   <Input id={`${id}-logo`} type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => { onLogo(e.target.files?.[0]); e.target.value = ""; }} />
                  {logoError && !pendingLogo && <p role="alert" className="text-sm text-destructive">{logoError}</p>}
                 {template.logoDataUrl && (

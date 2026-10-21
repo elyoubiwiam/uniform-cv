@@ -2,17 +2,18 @@ import { useEffect, useState } from "react";
 import { PdfFirstPage } from "@/components/cv/PdfFirstPage";
 import { buildPdf } from "@/lib/cv-export";
 import type { CV, Template } from "@/lib/cv-schema";
+import type { RecruiterCover } from "@/lib/cv-cover";
 
-export function GeneratedPdfView({ cv, template }: { cv: CV; template: Template }) {
-  const source = JSON.stringify({ cv, template });
+export function GeneratedPdfView({ cv, template, cover }: { cv: CV; template: Template; cover?: RecruiterCover | undefined }) {
+  const source = JSON.stringify({ cv, template, cover });
   const [result, setResult] = useState<{ source: string; blob: Blob } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        const input: { cv: CV; template: Template } = JSON.parse(source);
-        const blob = await buildPdf(input.cv, input.template);
+        const input: { cv: CV; template: Template; cover?: RecruiterCover | undefined } = JSON.parse(source);
+        const blob = await buildPdf(input.cv, input.template, input.cover);
         if (!cancelled) setResult({ source, blob });
       } catch {
         if (!cancelled) setResult(null);
