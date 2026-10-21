@@ -78,7 +78,7 @@ function SkillsField({ skills, onChange }: { skills: string[]; onChange: (skills
   useEffect(() => { setDraft(value); }, [value]);
   return <div className="space-y-1">
     <Label htmlFor="cv-skills" className="text-xs text-muted-foreground">Skills</Label>
-    <Textarea id="cv-skills" rows={5} value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => {
+    <AutoTextarea id="cv-skills" rows={5} value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => {
       const normalized = normalizeSkills([draft]);
       setDraft(normalized.join("\n"));
       onChange(normalized);
