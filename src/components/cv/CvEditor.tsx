@@ -38,6 +38,26 @@ function Heading({ children, onAdd }: { children: React.ReactNode; onAdd?: () =>
   );
 }
 
+function DraftField({ label, items, sep, parse, onChange, multiline }: { label: string; items: string[]; sep: string; parse: (s: string) => string[]; onChange: (v: string[]) => void; multiline?: boolean }) {
+  const value = items.join(sep);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => {
+    setDraft((d) => (parse(d).join(sep) === value ? d : value));
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+  const commit = () => { const p = parse(draft); setDraft(p.join(sep)); onChange(p); };
+  const change = (v: string) => { setDraft(v); onChange(parse(v)); };
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      {multiline ? (
+        <Textarea value={draft} onChange={(e) => change(e.target.value)} onBlur={commit} rows={4} />
+      ) : (
+        <Input value={draft} onChange={(e) => change(e.target.value)} onBlur={commit} />
+      )}
+    </div>
+  );
+}
+
 function SkillsField({ skills, onChange }: { skills: string[]; onChange: (skills: string[]) => void }) {
   const value = normalizeSkills(skills).join("\n");
   const [draft, setDraft] = useState(value);
