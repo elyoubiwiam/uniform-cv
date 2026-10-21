@@ -511,7 +511,7 @@ function Index() {
                       </>
                     )}
                   </div>
-                  <div className="sticky top-20 self-start">
+                  <div className={cn("sticky top-20 self-start", desktopView === "edit" && "max-h-[calc(100vh-6rem)] overflow-y-auto overscroll-contain")}>
                     {desktopView === "compare" && <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uniformed<PdfPageCount cv={selected.cv} template={template} cover={selected.cover} /></p>}
                     {desktopView === "compare" ? (
                       <GeneratedPdfView cv={selected.cv} template={template} cover={selected.cover} />
