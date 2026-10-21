@@ -64,7 +64,7 @@ function DraftField({ label, items, sep, parse, onChange, multiline, rich }: { l
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       {multiline ? (
-        <Textarea data-rich={rich || undefined} value={draft} onChange={(e) => change(e.target.value)} onBlur={commit} rows={4} />
+        <AutoTextarea data-rich={rich || undefined} value={draft} onChange={(e) => change(e.target.value)} onBlur={commit} rows={4} />
       ) : (
         <Input value={draft} onChange={(e) => change(e.target.value)} onBlur={commit} />
       )}
