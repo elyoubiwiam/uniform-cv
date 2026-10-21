@@ -1,5 +1,6 @@
 import type { CV } from "@/lib/cv-schema";
 import type { Issue } from "@/lib/proofread";
+import type { RecruiterCover } from "@/lib/cv-cover";
 
 export type Status = "queued" | "reading" | "ready" | "approved" | "error";
 
@@ -17,4 +18,5 @@ export type Candidate = {
   // Snapshot of the CV text at the last successful spelling check, so we only re-prompt when the text changed since.
   checkedCv?: string;
   scanned?: boolean;
+  cover?: RecruiterCover;
 };

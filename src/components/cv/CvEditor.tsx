@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { emptyRecruiterCover, type RecruiterCover } from "@/lib/cv-cover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function AutoTextarea({ value, className, ...props }: React.ComponentProps<typeof Textarea>) {
   const ref = useRef<HTMLTextAreaElement | null>(null);
@@ -41,7 +43,7 @@ const lines = (s: string) => s.split("\n").map((l) => l.trim()).filter(Boolean);
 const list = (s: string) => s.split(",").map((l) => l.trim()).filter(Boolean);
 const orNull = (s: string) => (s.trim() ? s : null);
 
-function Field({ label, value, onChange, multiline, rich }: { label: string; value: string | null; onChange: (v: string) => void; multiline?: boolean; rich?: boolean }) {
+function Field({ label, value, onChange, rich }: { label: string; value: string | null; onChange: (v: string) => void; multiline?: boolean; rich?: boolean }) {
   return (
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
@@ -63,7 +65,7 @@ function Heading({ children, onAdd }: { children: React.ReactNode; onAdd?: () =>
   );
 }
 
-function DraftField({ label, items, sep, parse, onChange, multiline, rich }: { label: string; items: string[]; sep: string; parse: (s: string) => string[]; onChange: (v: string[]) => void; multiline?: boolean; rich?: boolean }) {
+function DraftField({ label, items, sep, parse, onChange, rich }: { label: string; items: string[]; sep: string; parse: (s: string) => string[]; onChange: (v: string[]) => void; multiline?: boolean; rich?: boolean }) {
   const value = items.join(sep);
   const [draft, setDraft] = useState(value);
   useEffect(() => {
@@ -95,7 +97,9 @@ function SkillsField({ skills, onChange }: { skills: string[]; onChange: (skills
 
 function applyMark(el: HTMLTextAreaElement, mark: Mark) {
   const next = toggleMark(el.value, el.selectionStart, el.selectionEnd, mark);
-  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(el, next.value);
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+  if (!setter) return;
+  setter.call(el, next.value);
   el.dispatchEvent(new Event("input", { bubbles: true }));
   el.focus();
   requestAnimationFrame(() => el.setSelectionRange(next.start, next.end));
@@ -117,7 +121,9 @@ function FormatBar({ target }: { target: React.RefObject<HTMLTextAreaElement | n
   );
 }
 
-export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onChange: (cv: CV) => void; issues?: Issue[]; onIssues?: (i: Issue[]) => void }) {
+export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverChange, anonymise = false }: { cv: CV; onChange: (cv: CV) => void; issues?: Issue[]; onIssues?: (i: Issue[]) => void; cover?: RecruiterCover; onCoverChange?: (cover: RecruiterCover) => void; anonymise?: boolean }) {
+  const details = cover ?? emptyRecruiterCover;
+  const coverField = (key: Exclude<keyof RecruiterCover, "relocation">, label: string, fallback = "") => <Field label={label} value={details[key] || fallback} onChange={(value) => onCoverChange?.({ ...details, [key]: value })} />;
   const set = <K extends keyof CV>(k: K, v: CV[K]) => onChange({ ...cv, [k]: v });
   const editor = useRef<HTMLDivElement | null>(null);
   const target = useRef<HTMLTextAreaElement | null>(null);
@@ -132,13 +138,31 @@ export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onCh
       }}>
       <FormatBar target={target} />
       <nav aria-label="CV sections" className="flex flex-wrap gap-1 border-b border-border pb-2">
-        {["Experience", "Education", "Skills", "Interests & hobbies"].map((section) => (
+        {[...(onCoverChange ? ["Recruiter cover page"] : []), "Experience", "Education", "Skills", "Interests & hobbies"].map((section) => (
           <Button key={section} variant="ghost" size="sm" onClick={() => {
             const heading = Array.from(editor.current?.querySelectorAll("h3") ?? []).find((el) => el.textContent === section);
             heading?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
           }}><ArrowDown className="h-3 w-3" />{section}</Button>
         ))}
       </nav>
+      {onCoverChange && <section className="space-y-3">
+        <Heading>Recruiter cover page</Heading>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {coverField("candidateName", "Name of candidate", cv.fullName)}
+          {coverField("noticePeriod", "Notice period")}
+          {coverField("currentSalary", "Current salary (£)")}
+          {coverField("expectedSalary", "Salary expectations (£)")}
+          {coverField("employer", "Current / last employer", cv.experience[0]?.company ?? "")}
+          {coverField("location", "Candidate location", cv.location ?? "")}
+          <div className="space-y-1"><Label className="text-xs text-muted-foreground">Able to relocate if needed</Label>
+            <Select value={details.relocation || "unspecified"} onValueChange={(value) => {
+              if (value === "yes" || value === "no" || value === "discuss" || value === "unspecified") onCoverChange({ ...details, relocation: value === "unspecified" ? "" : value });
+            }}><SelectTrigger aria-label="Able to relocate if needed"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="unspecified">Not provided</SelectItem><SelectItem value="yes">Yes</SelectItem><SelectItem value="no">No</SelectItem><SelectItem value="discuss">Open to discussion</SelectItem></SelectContent></Select>
+          </div>
+        </div>
+        {coverField("notes", "Recruiter notes")}
+        {anonymise && <p className="text-xs text-muted-foreground">The anonymous cover uses initials and excludes employer, location and recruiter notes.</p>}
+      </section>}
       {issues.length > 0 && (
         <div className="space-y-2 rounded-md border border-destructive/40 bg-card p-3">
           <p className="text-xs text-muted-foreground">{issues.length} possible spelling/grammar issue{issues.length > 1 ? "s" : ""}, underlined in red in the preview. Nothing is changed unless you accept it — or just edit the text below.</p>
