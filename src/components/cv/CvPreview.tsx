@@ -26,7 +26,7 @@ function Marked({ text, issues }: { text: string; issues: Issue[] }) {
   );
 }
 
-export function CvPreview({ cv, template: raw, issues = [], cover }: { cv: CV; template: Template; issues?: Issue[]; cover?: RecruiterCover }) {
+export function CvPreview({ cv, template: raw, issues = [], cover }: { cv: CV; template: Template; issues?: Issue[]; cover?: RecruiterCover | undefined }) {
   const template = effectiveTemplate(raw);
   const presented = consultantLine(template);
   const [foot1, foot2] = footerLines(template);

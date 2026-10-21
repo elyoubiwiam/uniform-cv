@@ -1,7 +1,7 @@
 import { recruiterCoverContent, type RecruiterCover } from "@/lib/cv-cover";
 import type { CV, Template } from "@/lib/cv-schema";
 
-export function RecruiterCoverPreview({ cv, template, cover }: { cv: CV; template: Template; cover?: RecruiterCover }) {
+export function RecruiterCoverPreview({ cv, template, cover }: { cv: CV; template: Template; cover?: RecruiterCover | undefined }) {
   const content = recruiterCoverContent(cv, template, cover);
   if (!content) return null;
   return <article aria-label="Recruiter cover page" className="mx-auto flex min-h-[640px] w-full max-w-[640px] flex-col rounded-sm bg-card p-6 text-card-foreground shadow-sm sm:p-10">

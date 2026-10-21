@@ -121,7 +121,7 @@ function FormatBar({ target }: { target: React.RefObject<HTMLTextAreaElement | n
   );
 }
 
-export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverChange, anonymise = false }: { cv: CV; onChange: (cv: CV) => void; issues?: Issue[]; onIssues?: (i: Issue[]) => void; cover?: RecruiterCover; onCoverChange?: (cover: RecruiterCover) => void; anonymise?: boolean }) {
+export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverChange, anonymise = false }: { cv: CV; onChange: (cv: CV) => void; issues?: Issue[]; onIssues?: (i: Issue[]) => void; cover?: RecruiterCover | undefined; onCoverChange?: ((cover: RecruiterCover) => void) | undefined; anonymise?: boolean }) {
   const details = cover ?? emptyRecruiterCover;
   const coverField = (key: Exclude<keyof RecruiterCover, "relocation">, label: string, fallback = "") => <Field label={label} value={details[key] || fallback} onChange={(value) => onCoverChange?.({ ...details, [key]: value })} />;
   const set = <K extends keyof CV>(k: K, v: CV[K]) => onChange({ ...cv, [k]: v });
