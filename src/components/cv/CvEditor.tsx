@@ -31,7 +31,7 @@ function Field({ label, value, onChange, multiline, rich }: { label: string; val
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       {multiline ? (
-        <Textarea data-rich={rich || undefined} value={value ?? ""} onChange={(e) => onChange(e.target.value)} rows={4} />
+        <AutoTextarea data-rich={rich || undefined} value={value ?? ""} onChange={(e) => onChange(e.target.value)} rows={4} />
       ) : (
         <Input value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
       )}
