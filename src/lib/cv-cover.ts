@@ -10,7 +10,24 @@ export type RecruiterCover = {
   location: string;
   relocation: "" | "yes" | "no" | "discuss";
   notes: string;
+  availability?: Availability;
 };
+
+export const WEEKDAYS = [["mon", "Mon"], ["tue", "Tue"], ["wed", "Wed"], ["thu", "Thu"], ["fri", "Fri"], ["sat", "Sat"]] as const;
+export type Weekday = (typeof WEEKDAYS)[number][0];
+export type TimeRange = { from: string; to: string };
+export type Availability = Partial<Record<Weekday, TimeRange[]>>;
+
+export const validRange = (r: TimeRange) => /^\d\d:\d\d$/.test(r.from) && /^\d\d:\d\d$/.test(r.to) && r.from < r.to;
+
+/** Week-ordered summary; Sunday and invalid ranges are never shown. */
+export function formatAvailability(a?: Availability) {
+  const parts = WEEKDAYS.flatMap(([key, label]) => {
+    const ranges = (a?.[key] ?? []).filter(validRange);
+    return ranges.length ? [`${label} ${ranges.map((r) => `${r.from}–${r.to}`).join(", ")}`] : [];
+  });
+  return parts.join(" · ") || "Not provided";
+}
 
 export const emptyRecruiterCover: RecruiterCover = {
   candidateName: "", noticePeriod: "", currentSalary: "", expectedSalary: "",
@@ -38,6 +55,7 @@ export function recruiterCoverContent(cv: CV, raw: Template, details?: Recruiter
         ["Location", cover.location.trim() || cv.location || "Not provided"],
       ] : []),
       ["Able to relocate", ({ yes: "Yes", no: "No", discuss: "Open to discussion", "": "Not provided" })[cover.relocation]],
+      ["Interview availability", formatAvailability(cover.availability)],
     ] as [string, string][],
     // Free-form notes can identify a candidate; never leak them into anonymous exports.
     notes: template.anonymise ? "" : cover.notes.trim(),

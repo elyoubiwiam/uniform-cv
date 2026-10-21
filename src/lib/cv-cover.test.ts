@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cvSchema, defaultTemplate } from "./cv-schema";
-import { emptyRecruiterCover, recruiterCoverContent, salaryGBP } from "./cv-cover";
+import { formatAvailability, emptyRecruiterCover, recruiterCoverContent, salaryGBP } from "./cv-cover";
 
 const cv = cvSchema.parse({ fullName: "Alex Reed", headline: null, location: "London", email: null, phone: null, links: [], summary: null, experience: [], education: [], skills: [], languages: [], certifications: [], interests: [], hyperlinks: [] });
 describe("Recruiter cover information", () => {
@@ -18,4 +18,8 @@ describe("Recruiter cover information", () => {
     const result = recruiterCoverContent(cv, { ...defaultTemplate, anonymise: true }, { ...emptyRecruiterCover, candidateName: "Secret Name", employer: "Secret Employer", location: "Secret Location", notes: "Secret Notes" });
     expect(result?.name).toBe("A. R"); expect(JSON.stringify(result)).not.toContain("Secret");
   });
+  it("lists availability in week order with several ranges", () => { expect(formatAvailability({ wed: [{ from: "10:00", to: "11:30" }], mon: [{ from: "09:00", to: "12:00" }, { from: "14:00", to: "17:00" }] })).toBe("Mon 09:00–12:00, 14:00–17:00 · Wed 10:00–11:30"); });
+  it("never shows Sunday", () => { expect(formatAvailability({ sun: [{ from: "09:00", to: "10:00" }] } as never)).toBe("Not provided"); });
+  it("skips ranges ending before they start", () => { expect(formatAvailability({ tue: [{ from: "15:00", to: "09:00" }] })).toBe("Not provided"); });
+  it("shows availability on the cover", () => { expect(recruiterCoverContent(cv, defaultTemplate, { ...emptyRecruiterCover, availability: { fri: [{ from: "09:00", to: "10:00" }] } })?.rows).toContainEqual(["Interview availability", "Fri 09:00–10:00"]); });
 });

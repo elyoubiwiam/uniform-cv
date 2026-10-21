@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { emptyRecruiterCover, type RecruiterCover } from "@/lib/cv-cover";
+import { emptyRecruiterCover, validRange, WEEKDAYS, type Availability, type RecruiterCover, type TimeRange, type Weekday } from "@/lib/cv-cover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function AutoTextarea({ value, className, ...props }: React.ComponentProps<typeof Textarea>) {
@@ -105,25 +105,110 @@ function applyMark(el: HTMLTextAreaElement, mark: Mark) {
   requestAnimationFrame(() => el.setSelectionRange(next.start, next.end));
 }
 
-function FormatBar({ target }: { target: React.RefObject<HTMLTextAreaElement | null> }) {
+function selectionPoint(el: HTMLTextAreaElement) {
+  const style = getComputedStyle(el);
+  const mirror = document.createElement("div");
+  for (const prop of ["boxSizing", "width", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft", "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth", "fontFamily", "fontSize", "fontWeight", "lineHeight", "letterSpacing", "wordSpacing", "textIndent"] as const) mirror.style[prop] = style[prop];
+  Object.assign(mirror.style, { position: "absolute", visibility: "hidden", whiteSpace: "pre-wrap", overflowWrap: "break-word", top: "0", left: "-9999px", borderStyle: "solid" });
+  mirror.textContent = el.value.slice(0, el.selectionStart);
+  const marker = document.createElement("span");
+  marker.textContent = el.value.slice(el.selectionStart, el.selectionEnd) || ".";
+  mirror.appendChild(marker);
+  document.body.appendChild(mirror);
+  const rect = el.getBoundingClientRect();
+  const top = rect.top + marker.offsetTop - el.scrollTop;
+  const left = rect.left + Math.min(marker.offsetLeft, rect.width - 40);
+  document.body.removeChild(mirror);
+  return { top, left };
+}
+
+function SelectionToolbar({ editor }: { editor: React.RefObject<HTMLDivElement | null> }) {
+  const [state, setState] = useState<{ el: HTMLTextAreaElement; top: number; left: number } | null>(null);
+  useEffect(() => {
+    const update = () => {
+      const el = document.activeElement;
+      if (el instanceof HTMLTextAreaElement && el.dataset["rich"] && editor.current?.contains(el) && el.selectionEnd > el.selectionStart) {
+        const { top, left } = selectionPoint(el);
+        setState({ el, top: Math.max(8, top - 44), left: Math.max(8, Math.min(left, window.innerWidth - 136)) });
+      } else setState(null);
+    };
+    const hide = (e: KeyboardEvent) => { if (e.key === "Escape") setState(null); };
+    const events = ["selectionchange", "mouseup", "keyup"] as const;
+    events.forEach((ev) => document.addEventListener(ev, update));
+    document.addEventListener("keydown", hide);
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      events.forEach((ev) => document.removeEventListener(ev, update));
+      document.removeEventListener("keydown", hide);
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [editor]);
+  if (!state) return null;
   const tools = [["bold", Bold, "Bold (Ctrl+B)"], ["italic", Italic, "Italic (Ctrl+I)"], ["underline", Underline, "Underline (Ctrl+U)"]] as const;
   return (
-    <div className="sticky top-16 z-10 flex items-center gap-1 rounded-md border border-border bg-card p-1 shadow-sm">
+    <div role="toolbar" aria-label="Text formatting" className="fixed z-50 flex items-center gap-0.5 rounded-md border border-border bg-popover p-1 shadow-md" style={{ top: state.top, left: state.left }}>
       {tools.map(([mark, Icon, label]) => (
-        <Button key={mark} type="button" variant="ghost" size="icon" aria-label={label} title={label}
+        <Button key={mark} type="button" variant="ghost" size="icon" className="h-8 w-8" aria-label={label} title={label}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => { if (target.current?.isConnected) applyMark(target.current, mark); }}>
+          onClick={() => { if (state.el.isConnected) applyMark(state.el, mark); }}>
           <Icon className="h-4 w-4" />
         </Button>
       ))}
-      <span className="ml-1 text-xs text-muted-foreground">Select text in Profile, bullet points or education details, then format it.</span>
+    </div>
+  );
+}
+
+const TIMES = Array.from({ length: 96 }, (_, i) => `${String(Math.floor(i / 4)).padStart(2, "0")}:${String((i % 4) * 15).padStart(2, "0")}`);
+
+function TimeSelect({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  return <Select value={value} onValueChange={onChange}><SelectTrigger className="w-24" aria-label={label}><SelectValue /></SelectTrigger><SelectContent className="max-h-60">{TIMES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select>;
+}
+
+function AvailabilityField({ value = {}, onChange }: { value?: Availability | undefined; onChange: (v: Availability) => void }) {
+  const setDay = (day: Weekday, ranges: TimeRange[] | undefined) => {
+    const next = { ...value };
+    if (ranges) next[day] = ranges; else delete next[day];
+    onChange(next);
+  };
+  return (
+    <div className="space-y-2">
+      <Label className="text-xs text-muted-foreground">Interview availability</Label>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Available days">
+        {WEEKDAYS.map(([day, label]) => {
+          const on = Boolean(value[day]);
+          return <Button key={day} type="button" size="sm" variant={on ? "default" : "outline"} aria-pressed={on}
+            onClick={() => setDay(day, on ? undefined : [{ from: "09:00", to: "17:00" }])}>{label}</Button>;
+        })}
+      </div>
+      {WEEKDAYS.filter(([day]) => value[day]).map(([day, label]) => {
+        const ranges = value[day] ?? [];
+        return (
+          <div key={day} className="flex flex-wrap items-start gap-3 rounded-md border border-border p-2">
+            <span className="w-10 pt-2 text-sm font-medium">{label}</span>
+            <div className="flex-1 space-y-2">
+              {ranges.map((r, i) => (
+                <div key={i} className="flex flex-wrap items-center gap-2">
+                  <TimeSelect label={`${label} start time ${i + 1}`} value={r.from} onChange={(from) => setDay(day, ranges.map((x, j) => (j === i ? { ...x, from } : x)))} />
+                  <span className="text-sm text-muted-foreground">until</span>
+                  <TimeSelect label={`${label} end time ${i + 1}`} value={r.to} onChange={(to) => setDay(day, ranges.map((x, j) => (j === i ? { ...x, to } : x)))} />
+                  <Button type="button" variant="ghost" size="icon" aria-label={`Remove ${label} time ${i + 1}`} onClick={() => setDay(day, ranges.length > 1 ? ranges.filter((_, j) => j !== i) : undefined)}><X className="h-4 w-4" /></Button>
+                  {!validRange(r) && <span className="text-xs text-destructive">End must be after start</span>}
+                </div>
+              ))}
+              <Button type="button" variant="ghost" size="sm" onClick={() => setDay(day, [...ranges, { from: "14:00", to: "17:00" }])}><Plus className="h-4 w-4" /> Add another time</Button>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverChange, anonymise = false }: { cv: CV; onChange: (cv: CV) => void; issues?: Issue[]; onIssues?: (i: Issue[]) => void; cover?: RecruiterCover | undefined; onCoverChange?: ((cover: RecruiterCover) => void) | undefined; anonymise?: boolean }) {
   const details = cover ?? emptyRecruiterCover;
-  const coverField = (key: Exclude<keyof RecruiterCover, "relocation">, label: string, fallback = "") => <Field label={label} value={details[key] || fallback} onChange={(value) => onCoverChange?.({ ...details, [key]: value })} />;
+  const coverField = (key: Exclude<keyof RecruiterCover, "relocation" | "availability">, label: string, fallback = "") => <Field label={label} value={details[key] || fallback} onChange={(value) => onCoverChange?.({ ...details, [key]: value })} />;
   const set = <K extends keyof CV>(k: K, v: CV[K]) => onChange({ ...cv, [k]: v });
   const editor = useRef<HTMLDivElement | null>(null);
   const target = useRef<HTMLTextAreaElement | null>(null);
@@ -136,7 +221,7 @@ export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverCh
         const mark = ({ b: "bold", i: "italic", u: "underline" } as const)[e.key.toLowerCase() as "b"];
         if (el && mark && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) { e.preventDefault(); applyMark(el, mark); }
       }}>
-      <FormatBar target={target} />
+      <SelectionToolbar editor={editor} />
       <nav aria-label="CV sections" className="flex flex-wrap gap-1 border-b border-border pb-2">
         {[...(onCoverChange ? ["Recruiter cover page"] : []), "Experience", "Education", "Skills", "Interests & hobbies"].map((section) => (
           <Button key={section} variant="ghost" size="sm" onClick={() => {
@@ -160,6 +245,7 @@ export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverCh
             }}><SelectTrigger aria-label="Able to relocate if needed"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="unspecified">Not provided</SelectItem><SelectItem value="yes">Yes</SelectItem><SelectItem value="no">No</SelectItem><SelectItem value="discuss">Open to discussion</SelectItem></SelectContent></Select>
           </div>
         </div>
+        <AvailabilityField value={details.availability} onChange={(availability) => onCoverChange({ ...details, availability })} />
         {coverField("notes", "Recruiter notes")}
         {anonymise && <p className="text-xs text-muted-foreground">The anonymous cover uses initials and excludes employer, location and recruiter notes.</p>}
       </section>}
