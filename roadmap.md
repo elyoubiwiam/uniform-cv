@@ -20,7 +20,7 @@
 - [x] Verify compare page controls and document sizing at desktop, tablet and mobile widths
 - [x] Auto-sizing editor text boxes that fit their text and grow as lines are added
 - [x] Remove the clipped editor scroll area, expose section navigation, and remeasure every field when shown or resized
-- [ ] Recruiter cover page on formatted exports: recruiter details + logo on a first page
-- [ ] New candidate fields: notice period, current salary, salary expectations (£), current/last employer, able to relocate
-- [ ] Notes box for the recruiter's own notes
+- [x] Recruiter cover page on formatted exports: recruiter details + logo on a first page
+- [x] New candidate fields: notice period, current salary, salary expectations (£), current/last employer, able to relocate
+- [x] Notes box for the recruiter's own notes
 - [ ] Pull CVs from an ATS (next planned step)

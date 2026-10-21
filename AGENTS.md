@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Keep PDF.js on a release compatible with supported browsers (currently v5); why: v6 uses newer Map methods that prevent page rendering in existing Chromium versions.
 - Recruiter cover data lives on each in-memory candidate, outside the extracted CV schema, and a shared cover-content helper feeds preview and both exports; why: recruiter notes must not rewrite source text or leak into candidate-mode or anonymous documents.
 - CV editor fields auto-size on text, width, visibility and font changes, and the editor uses normal page scrolling; why: hidden desktop panels must not retain clipped measurements and all content must stay reachable.
 - Preview PDF page counts are read from the actual client-generated export; why: matches downloaded pagination and updates with CV/template changes.

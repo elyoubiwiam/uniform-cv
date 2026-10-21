@@ -108,7 +108,7 @@ function applyMark(el: HTMLTextAreaElement, mark: Mark) {
 function FormatBar({ target }: { target: React.RefObject<HTMLTextAreaElement | null> }) {
   const tools = [["bold", Bold, "Bold (Ctrl+B)"], ["italic", Italic, "Italic (Ctrl+I)"], ["underline", Underline, "Underline (Ctrl+U)"]] as const;
   return (
-    <div className="sticky top-0 z-10 flex items-center gap-1 rounded-md border border-border bg-card p-1 shadow-sm">
+    <div className="sticky top-16 z-10 flex items-center gap-1 rounded-md border border-border bg-card p-1 shadow-sm">
       {tools.map(([mark, Icon, label]) => (
         <Button key={mark} type="button" variant="ghost" size="icon" aria-label={label} title={label}
           onMouseDown={(e) => e.preventDefault()}
