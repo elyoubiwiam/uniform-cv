@@ -21,7 +21,7 @@
 - Footer branding uses bounded, aspect-ratio-preserving logos and reserved space in preview and exports; why: branding cannot overlap candidate content.
 - CV paragraph boundaries and export spacing are handled by the shared CV layout module; why: consistent readable spacing without rewriting source content.
 - Recruiter details share one form between the start page and Template settings; why: both surfaces edit the same saved template without divergent fields.
-- Every PDF/Word download uses one spelling-review dialog and shared candidate selection; why: single and batch downloads prompt consistently without automatically accepting corrections.
+- Every PDF/Word download uses one spelling-review dialog and shared candidate selection, skipped for CVs checked once whose text hasn't changed since (each check snapshots the CV; edits, shortening or re-reading trigger the prompt again); why: consistent prompting without redundant re-checks and without automatically accepting corrections.
 - Skill separator normalization is shared by category cleanup, editor blur, preview and exports; why: comma lists and explicit groups remain consistent without rewriting terms.
 - Recruiter logo background removal runs in the browser on flat edge-connected backdrops and produces a transparent PNG; why: preserves logo details without uploading branding to another service, and refuses uncertain patterned backgrounds.
 - Inline bold/italic/underline is stored in CV text as **, *, __ markers parsed by src/lib/cv-format.ts and rendered by preview, PDF and Word; why: no schema change and formatting survives every export.
