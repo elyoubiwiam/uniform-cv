@@ -1,5 +1,6 @@
-import { Check, Plus, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Bold, Check, Italic, Plus, Trash2, Underline, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { toggleMark, type Mark } from "@/lib/cv-format";
 import { normalizeSkills } from "@/lib/cv-skills";
 import { applyFix, type Issue } from "@/lib/proofread";
 import type { CV } from "@/lib/cv-schema";
@@ -12,12 +13,12 @@ const lines = (s: string) => s.split("\n").map((l) => l.trim()).filter(Boolean);
 const list = (s: string) => s.split(",").map((l) => l.trim()).filter(Boolean);
 const orNull = (s: string) => (s.trim() ? s : null);
 
-function Field({ label, value, onChange, multiline }: { label: string; value: string | null; onChange: (v: string) => void; multiline?: boolean }) {
+function Field({ label, value, onChange, multiline, rich }: { label: string; value: string | null; onChange: (v: string) => void; multiline?: boolean; rich?: boolean }) {
   return (
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       {multiline ? (
-        <Textarea value={value ?? ""} onChange={(e) => onChange(e.target.value)} rows={4} />
+        <Textarea data-rich={rich || undefined} value={value ?? ""} onChange={(e) => onChange(e.target.value)} rows={4} />
       ) : (
         <Input value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
       )}
@@ -38,7 +39,7 @@ function Heading({ children, onAdd }: { children: React.ReactNode; onAdd?: () =>
   );
 }
 
-function DraftField({ label, items, sep, parse, onChange, multiline }: { label: string; items: string[]; sep: string; parse: (s: string) => string[]; onChange: (v: string[]) => void; multiline?: boolean }) {
+function DraftField({ label, items, sep, parse, onChange, multiline, rich }: { label: string; items: string[]; sep: string; parse: (s: string) => string[]; onChange: (v: string[]) => void; multiline?: boolean; rich?: boolean }) {
   const value = items.join(sep);
   const [draft, setDraft] = useState(value);
   useEffect(() => {
@@ -50,7 +51,7 @@ function DraftField({ label, items, sep, parse, onChange, multiline }: { label: 
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       {multiline ? (
-        <Textarea value={draft} onChange={(e) => change(e.target.value)} onBlur={commit} rows={4} />
+        <Textarea data-rich={rich || undefined} value={draft} onChange={(e) => change(e.target.value)} onBlur={commit} rows={4} />
       ) : (
         <Input value={draft} onChange={(e) => change(e.target.value)} onBlur={commit} />
       )}
@@ -72,10 +73,43 @@ function SkillsField({ skills, onChange }: { skills: string[]; onChange: (skills
   </div>;
 }
 
+function applyMark(el: HTMLTextAreaElement, mark: Mark) {
+  const next = toggleMark(el.value, el.selectionStart, el.selectionEnd, mark);
+  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(el, next.value);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  el.focus();
+  requestAnimationFrame(() => el.setSelectionRange(next.start, next.end));
+}
+
+function FormatBar({ target }: { target: React.RefObject<HTMLTextAreaElement | null> }) {
+  const tools = [["bold", Bold, "Bold (Ctrl+B)"], ["italic", Italic, "Italic (Ctrl+I)"], ["underline", Underline, "Underline (Ctrl+U)"]] as const;
+  return (
+    <div className="sticky top-0 z-10 flex items-center gap-1 rounded-md border border-border bg-card p-1 shadow-sm">
+      {tools.map(([mark, Icon, label]) => (
+        <Button key={mark} type="button" variant="ghost" size="icon" aria-label={label} title={label}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => { if (target.current?.isConnected) applyMark(target.current, mark); }}>
+          <Icon className="h-4 w-4" />
+        </Button>
+      ))}
+      <span className="ml-1 text-xs text-muted-foreground">Select text in Profile, bullet points or education details, then format it.</span>
+    </div>
+  );
+}
+
 export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onChange: (cv: CV) => void; issues?: Issue[]; onIssues?: (i: Issue[]) => void }) {
   const set = <K extends keyof CV>(k: K, v: CV[K]) => onChange({ ...cv, [k]: v });
+  const target = useRef<HTMLTextAreaElement | null>(null);
+  const rich = (el: EventTarget) => el instanceof HTMLTextAreaElement && el.dataset["rich"] ? el : null;
   return (
-    <div className="space-y-3">
+    <div className="space-y-3"
+      onFocus={(e) => { const el = rich(e.target); if (el) target.current = el; }}
+      onKeyDown={(e) => {
+        const el = rich(e.target);
+        const mark = ({ b: "bold", i: "italic", u: "underline" } as const)[e.key.toLowerCase() as "b"];
+        if (el && mark && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) { e.preventDefault(); applyMark(el, mark); }
+      }}>
+      <FormatBar target={target} />
       {issues.length > 0 && (
         <div className="space-y-2 rounded-md border border-destructive/40 bg-card p-3">
           <p className="text-xs text-muted-foreground">{issues.length} possible spelling/grammar issue{issues.length > 1 ? "s" : ""}, underlined in red in the preview. Nothing is changed unless you accept it — or just edit the text below.</p>
@@ -102,7 +136,7 @@ export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onCh
         <Field label="Location" value={cv.location} onChange={(v) => set("location", orNull(v))} />
         <Field label="Email" value={cv.email} onChange={(v) => set("email", orNull(v))} />
         <Field label="Phone" value={cv.phone} onChange={(v) => set("phone", orNull(v))} />
-        <Field label="Links (comma separated)" value={cv.links.join(", ")} onChange={(v) => set("links", list(v))} />
+        <DraftField label="Links (comma separated)" items={cv.links} sep=", " parse={list} onChange={(v) => set("links", v)} />
       </div>
       <Heading onAdd={() => set("hyperlinks", [...cv.hyperlinks, { text: "", url: "" }])}>Candidate links</Heading>
       {cv.hyperlinks.map((h, i) => {
@@ -117,7 +151,7 @@ export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onCh
           </div>
         );
       })}
-      <Field label="Profile" value={cv.summary} onChange={(v) => set("summary", orNull(v))} multiline />
+      <Field label="Profile" value={cv.summary} onChange={(v) => set("summary", orNull(v))} multiline rich />
 
       <Heading onAdd={() => set("experience", [...cv.experience, { title: "", company: "", location: null, startDate: null, endDate: null, bullets: [] }])}>
         Experience
@@ -133,7 +167,7 @@ export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onCh
               <Field label="End" value={e.endDate} onChange={(v) => up({ endDate: orNull(v) })} />
             </div>
             <Field label="Location" value={e.location} onChange={(v) => up({ location: orNull(v) })} />
-            <Field label="Bullet points (one per line)" value={e.bullets.join("\n")} onChange={(v) => up({ bullets: lines(v) })} multiline />
+            <DraftField label="Bullet points (one per line)" items={e.bullets} sep={"\n"} parse={lines} onChange={(v) => up({ bullets: v })} multiline rich />
             <Button variant="ghost" size="sm" className="text-destructive" onClick={() => set("experience", cv.experience.filter((_, j) => j !== i))}>
               <Trash2 className="h-4 w-4" /> Remove role
             </Button>
@@ -154,7 +188,7 @@ export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onCh
               <Field label="Start" value={e.startDate} onChange={(v) => up({ startDate: orNull(v) })} />
               <Field label="End" value={e.endDate} onChange={(v) => up({ endDate: orNull(v) })} />
             </div>
-            <Field label="Details" value={e.details} onChange={(v) => up({ details: orNull(v) })} />
+            <Field label="Details" value={e.details} onChange={(v) => up({ details: orNull(v) })} multiline rich />
             <Button variant="ghost" size="sm" className="text-destructive" onClick={() => set("education", cv.education.filter((_, j) => j !== i))}>
               <Trash2 className="h-4 w-4" /> Remove
             </Button>
@@ -165,10 +199,10 @@ export function CvEditor({ cv, onChange, issues = [], onIssues }: { cv: CV; onCh
       <Heading>Skills</Heading>
       <SkillsField skills={cv.skills} onChange={(skills) => set("skills", skills)} />
       <Heading>Interests & hobbies</Heading>
-      <Field label="Interests & hobbies (comma separated)" value={(cv.interests ?? []).join(", ")} onChange={(v) => set("interests", list(v))} multiline />
+      <DraftField label="Interests & hobbies (comma separated)" items={cv.interests ?? []} sep=", " parse={list} onChange={(v) => set("interests", v)} multiline />
       <Heading>Languages & certifications</Heading>
-      <Field label="Languages (comma separated)" value={cv.languages.join(", ")} onChange={(v) => set("languages", list(v))} />
-      <Field label="Certifications (comma separated)" value={cv.certifications.join(", ")} onChange={(v) => set("certifications", list(v))} />
+      <DraftField label="Languages (comma separated)" items={cv.languages} sep=", " parse={list} onChange={(v) => set("languages", v)} />
+      <DraftField label="Certifications (comma separated)" items={cv.certifications} sep=", " parse={list} onChange={(v) => set("certifications", v)} />
     </div>
   );
 }

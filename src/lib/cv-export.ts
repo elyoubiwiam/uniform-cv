@@ -1,6 +1,7 @@
 import { consultantLine, effectiveTemplate, footerLines, type CV, type Template } from "./cv-schema";
 import { footerLogoSize } from "./cv-footer";
 import { cvParagraphs, cvSpacing } from "./cv-layout";
+import { hasFormatting, parseFormatting } from "./cv-format";
 import { normalizeSkills } from "./cv-skills";
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -103,6 +104,55 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
     }
   };
 
+  /** Word-wrap styled runs manually so bold/italic/underline can change mid-line. */
+  const richParagraph = (paragraph: string, size: number, lh: number, opts: { bold?: boolean; color?: [number, number, number]; indent?: number }) => {
+    const x0 = M + (opts.indent ?? 0);
+    const maxW = CW - (opts.indent ?? 0);
+    const setStyle = (b?: boolean, i?: boolean) => doc.setFont(F, b && i ? "bolditalic" : b ? "bold" : i ? "italic" : "normal");
+    for (const rawLine of paragraph.split("\n")) {
+      type W = { text: string; bold?: boolean | undefined; italic?: boolean | undefined; underline?: boolean | undefined; url?: string | undefined; w: number };
+      const words: W[] = [];
+      for (const run of parseFormatting(rawLine)) for (const seg of linkSegments(run.text, links)) for (const piece of seg.text.split(/(\s+)/)) {
+        if (!piece) continue;
+        const bold = run.bold || opts.bold;
+        setStyle(bold, run.italic);
+        words.push({ text: piece, bold, italic: run.italic, underline: run.underline, url: seg.url, w: doc.getTextWidth(piece) });
+      }
+      const rows: W[][] = [];
+      let row: W[] = [];
+      rows.push(row);
+      let used = 0;
+      for (const word of words) {
+        const space = /^\s+$/.test(word.text);
+        if (!space && used + word.w > maxW && row.length) {
+          while (row.length && /^\s+$/.test(row[row.length - 1]?.text ?? "")) row.pop();
+          row = []; rows.push(row); used = 0;
+        }
+        if (space && !row.length) continue;
+        row.push(word); used += word.w;
+      }
+      for (const line of rows) {
+        ensure(lh);
+        let x = x0;
+        for (const word of line) {
+          setStyle(word.bold, word.italic);
+          doc.setTextColor(...(word.url ? accent : opts.color ?? ink));
+          doc.text(word.text, x, y + size);
+          if (word.underline || word.url) {
+            doc.setDrawColor(...(word.url ? accent : opts.color ?? ink));
+            doc.setLineWidth(0.5);
+            doc.line(x, y + size + 1.5, x + word.w, y + size + 1.5);
+          }
+          if (word.url) doc.link(x, y, word.w, lh, { url: word.url });
+          x += word.w;
+        }
+        y += lh;
+      }
+    }
+    setStyle(opts.bold, false);
+    doc.setTextColor(...(opts.color ?? ink));
+  };
+
   const text = (str: string, size: number, opts: { bold?: boolean; color?: [number, number, number]; indent?: number; gap?: number; center?: boolean; url?: string } = {}) => {
     doc.setFont(F, opts.bold ? "bold" : "normal");
     doc.setFontSize(size);
@@ -111,6 +161,7 @@ export async function buildPdf(cv: CV, template: Template): Promise<Blob> {
     const lh = size * cvSpacing.lineHeight;
     for (const [paragraphIndex, paragraph] of paragraphs.entries()) {
       if (paragraphIndex > 0) y += cvSpacing.paragraphGap;
+      if (hasFormatting(paragraph)) { richParagraph(paragraph, size, lh, opts); continue; }
       const lines = paragraph.split("\n").flatMap((line) => doc.splitTextToSize(line, CW - (opts.indent ?? 0)) as string[]);
       for (const line of lines) {
       ensure(lh);
@@ -271,11 +322,14 @@ export async function buildDocx(cv: CV, template: Template): Promise<Blob> {
   const links = allLinks(cv, t);
   const headAlign = t.align === "center" ? AlignmentType.CENTER : AlignmentType.LEFT;
   const runs = (str: string, o: { size: number; color?: string; bold?: boolean }) =>
-    linkSegments(str, links).map((s) =>
-      s.url
-        ? new ExternalHyperlink({ link: s.url, children: [new TextRun({ text: s.text, ...o, color: accent, underline: {}, font })] })
-        : new TextRun({ text: s.text, ...o, font }),
-    );
+    parseFormatting(str).flatMap((run) => {
+      const style = { ...o, ...(run.bold ? { bold: true } : {}), ...(run.italic ? { italics: true } : {}), ...(run.underline ? { underline: {} } : {}) };
+      return linkSegments(run.text, links).map((s) =>
+        s.url
+          ? new ExternalHyperlink({ link: s.url, children: [new TextRun({ text: s.text, ...style, color: accent, underline: {}, font })] })
+          : new TextRun({ text: s.text, ...style, font }),
+      );
+    });
   const children: InstanceType<typeof Paragraph>[] = [];
   const footerBranding: InstanceType<typeof Paragraph>[] = [];
 
