@@ -1,5 +1,5 @@
 import { Bold, Check, Italic, Plus, Trash2, Underline, X } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toggleMark, type Mark } from "@/lib/cv-format";
 import { normalizeSkills } from "@/lib/cv-skills";
 import { applyFix, type Issue } from "@/lib/proofread";
