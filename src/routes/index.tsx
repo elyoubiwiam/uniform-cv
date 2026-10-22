@@ -169,6 +169,17 @@ function Index() {
 
   const patch = (id: string, p: Partial<Candidate>) => setCandidates((cs) => cs.map((c) => (c.id === id ? { ...c, ...p } : c)));
 
+  /** The logo links to "/" — the same route the tool lives on — so going home also clears the working session. */
+  const goHome = () => {
+    setCandidates([]);
+    setSelectedId(null);
+    setStarted(false);
+    setDesktopView("edit");
+    setDownloadRequest(null);
+    window.scrollTo({ top: 0 });
+  };
+
+
   const process = useCallback(
     async (c: Candidate) => {
       running.current.add(c.id);
@@ -283,7 +294,7 @@ function Index() {
       <header className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-6 py-3">
           <div className="flex min-w-0 items-center gap-3">
-            <Link to="/" className="flex items-center gap-3" aria-label="Uniform — back to homepage">
+            <Link to="/" onClick={goHome} className="flex items-center gap-3" aria-label="Uniform — back to homepage">
               <img src={uniformIcon} alt="" aria-hidden className="h-8 w-8 shrink-0" width={32} height={32} />
               <span className="font-display text-2xl font-semibold leading-none tracking-tight">Uniform<span className="text-accent">.</span></span>
             </Link>
