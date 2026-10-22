@@ -58,7 +58,7 @@ export function BeforeAfterSlider({ before, after }: { before: string; after: st
         )}
       </div>
       <figcaption className="mt-3 text-center text-sm text-muted-foreground">
-        Same words. One structure robots and recruiters both read. <span className="text-xs">(Fictional sample.)</span>
+        Same words. One structure ATS platforms and recruiters both read. <span className="text-xs">(Fictional sample.)</span>
       </figcaption>
     </figure>
   );
