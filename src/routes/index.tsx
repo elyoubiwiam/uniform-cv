@@ -4,7 +4,6 @@ import cvAfter from "@/assets/cv-after.jpg";
 import uniformIcon from "@/assets/uniform-icon.png";
 import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
 import { imageType, type ImageType } from "@/lib/file-kind";
-import { AudiencePicker } from "@/components/cv/AudiencePicker";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Download, FileText, Loader2, RotateCw, Scissors, RefreshCw, Undo2, SpellCheck, EyeOff, Trash2, Upload, AlertCircle, FileDown } from "lucide-react";
@@ -169,7 +168,7 @@ function Index() {
 
   const patch = (id: string, p: Partial<Candidate>) => setCandidates((cs) => cs.map((c) => (c.id === id ? { ...c, ...p } : c)));
 
-  /** The logo links to "/" — the same route the tool lives on — so going home also clears the working session. */
+  /** The logo links to "/", the same route the tool lives on, so going home also clears the working session. */
   const goHome = () => {
     setCandidates([]);
     setSelectedId(null);
@@ -240,7 +239,7 @@ function Index() {
     const ids = downloadReviewIds(candidates, candidateId);
     if (!ids.length) return;
     if (!idsNeedingReview(candidates, ids).length) {
-      // Every CV was already checked and the text hasn't changed since — download straight away.
+      // Every CV was already checked and unchanged: download straight away.
       void exportBatch(kind, ids);
       return;
     }
@@ -295,6 +294,7 @@ function Index() {
     }
   };
 
+  const onLanding = candidates.length === 0 || !started;
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
       <header className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur">
@@ -478,7 +478,7 @@ function Index() {
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h2 className="font-display text-3xl">{selected.cv.fullName || "Candidate"}</h2>
-                    <p className="text-sm text-muted-foreground">From {selected.file.name}{selected.scanned && <span className="ml-2 rounded-sm bg-accent/10 px-1.5 py-0.5 text-xs text-accent">Read from a scan — check carefully</span>}{effectiveTemplate(template).anonymise && <span className="ml-2 inline-flex items-center gap-1"><EyeOff className="h-3 w-3" /> Anonymised</span>}</p>
+                    <p className="text-sm text-muted-foreground">From {selected.file.name}{selected.scanned && <span className="ml-2 rounded-sm bg-accent/10 px-1.5 py-0.5 text-xs text-accent">Read from a scan. Check carefully</span>}{effectiveTemplate(template).anonymise && <span className="ml-2 inline-flex items-center gap-1"><EyeOff className="h-3 w-3" /> Anonymised</span>}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" size="sm" disabled={exporting || reviewingDownloads || selected.checking} onClick={() => requestDownload("docx", selected.id)}>
@@ -536,7 +536,7 @@ function Index() {
                     <TabsTrigger value="compare">Compare</TabsTrigger>
                   </TabsList>
                   <TabsContent value="side"><CvPreview cv={selected.cv} template={template} cover={selected.cover} issues={liveIssues(selected.cv, selected.issues ?? [])} /></TabsContent>
-                  <TabsContent value="edit"><CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={template.audience === "recruiter" ? (cover) => patch(selected.id, { cover }) : undefined} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} /></TabsContent>
+                  <TabsContent value="edit"><CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={(cover) => patch(selected.id, { cover })} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} /></TabsContent>
                   <TabsContent value="compare" className="space-y-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original</p>
                     <OriginalView file={selected.file} />
@@ -553,7 +553,7 @@ function Index() {
                 <div className={`hidden gap-8 lg:grid ${desktopView === "compare" ? "lg:grid-cols-2" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"}`}>
                   <div className="min-w-0">
                     {desktopView === "edit" ? (
-                      <CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={template.audience === "recruiter" ? (cover) => patch(selected.id, { cover }) : undefined} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} />
+                      <CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={(cover) => patch(selected.id, { cover })} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} />
                     ) : (
                       <>
                         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original · {selected.file.name}</p>
