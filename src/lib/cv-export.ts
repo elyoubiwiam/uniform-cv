@@ -28,9 +28,16 @@ export function normUrl(u: string) {
   return `https://${v}`;
 }
 
+/** Compare links loosely: ignore protocol, "www.", letter case and a trailing slash. */
+export function linkKey(u: string) {
+  return u.trim().toLowerCase().replace(/^[a-z]+:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
+}
+
 export function headerLinks(cv: CV, t: Template) {
   if (t.hideContactDetails || t.anonymise) return [];
-  return cv.hyperlinks.filter((h) => h.text.trim() && h.url.trim())
+  // Links already printed in the contact line are not repeated underneath it.
+  const shown = new Set(cv.links.map(linkKey));
+  return cv.hyperlinks.filter((h) => h.text.trim() && h.url.trim() && !shown.has(linkKey(h.url)))
     .map((h) => ({ text: h.text, url: normUrl(h.url) }));
 }
 

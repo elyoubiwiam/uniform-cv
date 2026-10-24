@@ -15,6 +15,18 @@ describe("Candidate header links", () => {
   it("hides header links with contact details", () => {
     expect(headerLinks(cv, { ...defaultTemplate, hideContactDetails: true })).toEqual([]);
   });
+  it("does not repeat a link already shown in the contact line", () => {
+    const dup = {
+      ...cv,
+      links: ["https://jamesoconnor-demo.design", "behance.net/joc-demo"],
+      hyperlinks: [
+        { text: "portfolio", url: "jamesoconnor-demo.design/" },
+        { text: "behance.net/joc-demo", url: "https://www.behance.net/joc-demo" },
+        { text: "Portfolio", url: "https://example.com/work" },
+      ],
+    };
+    expect(headerLinks(dup, defaultTemplate)).toEqual([{ text: "Portfolio", url: "https://example.com/work" }]);
+  });
 });
 
 describe("PDF text fast path", () => {
