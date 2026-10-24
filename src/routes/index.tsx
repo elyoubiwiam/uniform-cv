@@ -42,7 +42,7 @@ export const Route = createFileRoute("/")({
 });
 
 const MAX_BYTES = 10 * 1024 * 1024;
-const CONCURRENCY = 3;
+const CONCURRENCY = 5;
 const TEMPLATE_KEY = "uniform.template.v1";
 
 async function pdfLinks(buf: ArrayBuffer): Promise<string[]> {
@@ -256,7 +256,13 @@ function Index() {
     setSelectedId(list[0]?.id ?? null);
     setReviewingDownloads(true);
     try {
-      for (const candidate of list) await runCheck(candidate);
+      // Check several CVs at once instead of one after another.
+      const queue = [...list];
+      await Promise.all(
+        Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
+          for (let next = queue.shift(); next; next = queue.shift()) await runCheck(next);
+        }),
+      );
       toast.info("Review the suggestions for each CV, then download when you're ready. Nothing is corrected automatically.");
     } finally {
       setReviewingDownloads(false);
