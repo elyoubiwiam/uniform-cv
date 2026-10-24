@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PDFDocument, PDFRawStream, decodePDFRawStream } from "pdf-lib";
+import { PDFArray, PDFDocument, PDFRawStream, decodePDFRawStream } from "pdf-lib";
 import JSZip from "jszip";
 import { buildDocx, buildPdf } from "./cv-export";
 import { cvSchema, defaultTemplate } from "./cv-schema";
@@ -34,7 +34,7 @@ describe("CV download formatting", () => {
     expect(pdf.getPageCount()).toBe(2);
     const pageText = (index: number) => {
       const contents = pdf.getPage(index).node.Contents();
-      const streams = contents instanceof PDFRawStream ? [contents] : contents?.asArray().map((ref) => pdf.context.lookup(ref));
+      const streams = contents instanceof PDFArray ? contents.asArray().map((ref) => pdf.context.lookup(ref)) : contents ? [contents] : [];
       return (streams ?? []).flatMap((object) => object instanceof PDFRawStream ? [new TextDecoder().decode(decodePDFRawStream(object).decode())] : []).join("\n");
     };
     expect(pageText(0)).toContain("Note 99:");
