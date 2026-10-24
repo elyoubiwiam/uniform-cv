@@ -30,10 +30,10 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Uniform — Batch CV formatting for recruiters" },
-      { name: "description", content: "Upload a stack of CVs, review them in one standard layout, and export client-ready PDF or Word files." },
-      { property: "og:title", content: "Uniform — Batch CV formatting for recruiters" },
-      { property: "og:description", content: "Turn a pile of CVs into one consistent, client-ready format in minutes." },
+      { title: "Uniform | CV formatting for recruiters" },
+      { name: "description", content: "Upload candidate CVs, review them in your agency template and send client-ready PDF or Word files." },
+      { property: "og:title", content: "Uniform | CV formatting for recruiters" },
+      { property: "og:description", content: "Every candidate CV in your agency format, ready for clients in minutes." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -153,7 +153,7 @@ function Index() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(TEMPLATE_KEY);
-      if (raw) setTemplate({ ...defaultTemplate, ...JSON.parse(raw) });
+      if (raw) setTemplate({ ...defaultTemplate, ...JSON.parse(raw), audience: "recruiter" });
     } catch {
       /* ignore */
     }
