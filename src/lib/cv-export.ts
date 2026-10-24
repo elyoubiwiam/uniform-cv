@@ -4,6 +4,7 @@ import { cvParagraphs, cvSpacing } from "./cv-layout";
 import { hasFormatting, parseFormatting } from "./cv-format";
 import { normalizeSkills } from "./cv-skills";
 import { recruiterCoverContent, type RecruiterCover } from "./cv-cover";
+import { fitRecruiterCover } from "./cv-cover-layout";
 
 function hexToRgb(hex: string): [number, number, number] {
   const m = hex.replace("#", "").match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
@@ -193,27 +194,24 @@ export async function buildPdf(cv: CV, template: Template, cover?: RecruiterCove
 
   const coverContent = recruiterCoverContent(cv, t, cover);
   if (coverContent) {
-    text(t.agencyName || "Candidate presentation", 18, { bold: true, color: accent, gap: 18 });
-    if (t.logoDataUrl && logo) {
-      doc.addImage(t.logoDataUrl, M, y, logo.width * 2, logo.height * 2);
-      y += logo.height * 2 + 24;
-    }
-    text("Candidate overview", 10, { color: grey, gap: 8 });
-    text(coverContent.name, 24, { bold: true, gap: 20 });
-    for (const [label, value] of coverContent.rows) {
-      ensure(42);
-      text(label, 9, { color: grey });
-      text(value, 11, { gap: 12 });
-    }
-    if (coverContent.notes) {
-      ensure(48);
-      text("Recruiter notes", 11, { bold: true, gap: 8 });
-      text(coverContent.notes, 10, { gap: 20 });
-    }
-    if (coverContent.recruiter.length) {
-      ensure(36);
-      text("Presented by", 10, { bold: true, color: accent, gap: 6 });
-      for (const line of coverContent.recruiter) text(line, 9, { color: grey });
+    const layout = fitRecruiterCover(coverContent, t.agencyName, CW, contentBottom - M, (str, size, bold, width) => {
+      doc.setFont(F, bold ? "bold" : "normal");
+      doc.setFontSize(size);
+      return doc.splitTextToSize(str, width) as string[];
+    }, (logo?.height ?? 0) * 2);
+    for (const block of layout.blocks) {
+      if (block.logoHeight && logo && t.logoDataUrl) {
+        doc.addImage(t.logoDataUrl, M, y, logo.width * 2 * layout.scale, block.logoHeight);
+        y += block.logoHeight;
+      }
+      doc.setFont(F, block.bold ? "bold" : "normal");
+      doc.setFontSize(block.size || 10);
+      doc.setTextColor(...(block.tone === "accent" ? accent : block.tone === "muted" ? grey : ink));
+      for (const line of block.lines) {
+        doc.text(line, M, y + block.size);
+        y += block.lineHeight;
+      }
+      y += block.gap;
     }
     doc.addPage();
     y = M;
@@ -496,26 +494,49 @@ export async function buildDocx(cv: CV, template: Template, cover?: RecruiterCov
   }
 
   const coverContent = recruiterCoverContent(cv, t, cover);
+  const coverChildren: InstanceType<typeof Paragraph>[] = [];
   if (coverContent) {
-    const coverChildren: InstanceType<typeof Paragraph>[] = [];
-    const coverText = (text: string, size = 22, bold = false) => new Paragraph({ spacing: { after: 160 }, children: [new TextRun({ text, size, bold, font })] });
-    coverChildren.push(coverText(t.agencyName || "Candidate presentation", 36, true), ...footerBranding);
-    coverChildren.push(coverText("Candidate overview", 20), coverText(coverContent.name, 48, true));
-    for (const [label, value] of coverContent.rows) coverChildren.push(coverText(label, 18, true), coverText(value));
-    if (coverContent.notes) {
-      coverChildren.push(coverText("Recruiter notes", 22, true));
-      for (const paragraph of cvParagraphs(coverContent.notes)) coverChildren.push(new Paragraph({ spacing: { after: 160 }, children: paragraph.split("\n").flatMap((line, i) => [new TextRun({ text: line, ...(i ? { break: 1 } : {}), size: 20, font })]) }));
+    const { jsPDF } = await import("jspdf");
+    const measureDoc = new jsPDF({ unit: "pt", format: "a4" });
+    const coverFont = t.font === "times" ? "Times New Roman" : "Arial";
+    let coverLogo: { width: number; height: number; data: Uint8Array; type: "png" | "jpg" } | undefined;
+    if (t.logoDataUrl) {
+      try {
+        const props = measureDoc.getImageProperties(t.logoDataUrl);
+        const size = footerLogoSize(props.width, props.height);
+        const [meta = "", b64 = ""] = t.logoDataUrl.split(",");
+        coverLogo = { width: size.width * 2, height: size.height * 2, data: Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)), type: meta.includes("png") ? "png" : "jpg" };
+      } catch { /* Invalid logos are omitted. */ }
     }
-    if (coverContent.recruiter.length) coverChildren.push(coverText("Presented by", 22, true), ...coverContent.recruiter.map((line) => coverText(line, 18)));
-    children.unshift(...coverChildren, new Paragraph({ children: [new d.PageBreak()] }));
+    // Conservative reserved footer space and rounding slack for Word's layout engine.
+    const layout = fitRecruiterCover(coverContent, t.agencyName, 495, 650, (str, size, bold, width) => {
+      measureDoc.setFont(t.font === "times" ? "times" : "helvetica", bold ? "bold" : "normal");
+      measureDoc.setFontSize(size);
+      return measureDoc.splitTextToSize(str, width) as string[];
+    }, coverLogo?.height ?? 0);
+    for (const block of layout.blocks) {
+      if (block.logoHeight && coverLogo) {
+        coverChildren.push(new Paragraph({ spacing: { line: Math.ceil(block.logoHeight * 20), lineRule: d.LineRuleType.EXACT, after: Math.floor(block.gap * 20) }, children: [new ImageRun({ type: coverLogo.type, data: coverLogo.data, transformation: { width: coverLogo.width * layout.scale * 4 / 3, height: block.logoHeight * 4 / 3 } })] }));
+      } else {
+        coverChildren.push(new Paragraph({
+          keepLines: true,
+          spacing: { line: Math.floor(block.lineHeight * 20), lineRule: d.LineRuleType.EXACT, after: Math.floor(block.gap * 20) },
+          children: block.lines.map((line, index) => new TextRun({ text: line, ...(index ? { break: 1 } : {}), size: block.size * 2, bold: block.bold, font: coverFont, color: block.tone === "accent" ? accent : block.tone === "muted" ? "646C78" : "1E2430" })),
+        }));
+      }
+    }
   }
 
   const [footerLeft, footerSecond] = footerLines(t);
   const doc = new Document({
     styles: { default: { document: { paragraph: { spacing: { line: cvSpacing.lineHeight * 240, after: 60 } } } } },
     sections: [
+      ...(coverContent ? [{
+        properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1000, bottom: 1600, left: 1000, right: 1000, footer: 400 } } },
+        children: coverChildren,
+      }] : []),
       {
-        properties: { page: { margin: { top: 1000, bottom: t.logoDataUrl ? 1600 : 1000, left: 1000, right: 1000, footer: 400 } } },
+        properties: { ...(coverContent ? { type: d.SectionType.NEXT_PAGE } : {}), page: { size: { width: 11906, height: 16838 }, margin: { top: 1000, bottom: t.logoDataUrl ? 1600 : 1000, left: 1000, right: 1000, footer: 400 } } },
         footers: {
           default: new Footer({
             children: [
