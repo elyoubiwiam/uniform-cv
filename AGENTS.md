@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Recruiter covers are measured and fitted to one page before export; Word uses an explicit next-page section rather than a standalone page-break paragraph; why: long notes cannot overflow into a footer-only page before the CV.
 - Landing-page style previews use the shared carousel with larger slides and overflow-only navigation; why: keeps full CV samples readable without changing the compact template-settings chooser.
 - Keep PDF.js on a release compatible with supported browsers (currently v5); why: v6 uses newer Map methods that prevent page rendering in existing Chromium versions.
 - Recruiter cover data lives on each in-memory candidate, outside the extracted CV schema, and a shared cover-content helper feeds preview and both exports; why: recruiter notes must not rewrite source text or leak into candidate-mode or anonymous documents.
