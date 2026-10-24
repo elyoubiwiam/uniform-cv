@@ -60,7 +60,7 @@ export function StylePicker({ template, onChange, className, enlarged = false }:
         <CarouselNext className="static h-10 w-10 translate-x-0 translate-y-0" aria-label="Next CV style" title="Next CV style" />
       </div>}
       <CarouselContent className="-ml-4 py-1">
-        {styles.map((style, index) => <CarouselItem key={stylePresets[index].id} className="basis-full pl-4 sm:basis-1/2">{style}</CarouselItem>)}
+        {styles.map((style) => <CarouselItem key={style.key} className="basis-full pl-4 sm:basis-1/2">{style}</CarouselItem>)}
       </CarouselContent>
     </Carousel>
   );
