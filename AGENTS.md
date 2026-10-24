@@ -16,7 +16,7 @@
 - CV editor fields auto-size on text, width, visibility and font changes, and the editor uses normal page scrolling; why: hidden desktop panels must not retain clipped measurements and all content must stay reachable.
 - Preview PDF page counts are read from the actual client-generated export; why: matches downloaded pagination and updates with CV/template changes.
 - Compare mode renders every page of both the original and generated PDF through one shared PDF.js viewer with independent navigation; why: keeps page scale, boundaries, zoom and page controls identical.
-- CV extraction runs in a server function (`src/lib/cv.functions.ts`) calling Lovable AI Gateway Responses with a strict zod schema; why: keeps the key server-side and output uniform.
+- CV extraction runs in a server function (`src/lib/cv.functions.ts`) calling Claude Sonnet 5.5 via the Claude API when ANTHROPIC_API_KEY is set (falling back to Lovable AI Gateway Responses otherwise) with a strict zod schema; why: keeps the key server-side, output uniform, and AI cost on pay-as-you-go billing.
 - PDF/Word export is generated client-side from the structured CV with individual downloads; why: no file storage needed and exports match the on-screen review.
 - Read PDF text layers in the browser with a bundled PDF.js worker and fall back to the original PDF if any page lacks usable text; why: avoids duplicate document reading while retaining scan support.
 - Candidate CVs live only in browser memory; the template is in localStorage; why: v1 has no backend/accounts and avoids storing personal data.

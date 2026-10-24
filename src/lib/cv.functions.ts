@@ -67,6 +67,7 @@ async function runCv(instructions: string, content: Content): Promise<ExtractRes
     const result = streamText({
       model: createGatewayResponsesModel(),
       maxRetries: 0,
+      maxOutputTokens: 16000,
       instructions,
       messages: [{ role: "user", content }],
       output: Output.object({ schema: cvSchema }),
@@ -88,9 +89,9 @@ async function runCv(instructions: string, content: Content): Promise<ExtractRes
     }
     const status = (err as { statusCode?: number })?.statusCode;
     console.error("CV AI call failed", status, err);
-    if (status === 402) return { ok: false, error: "AI credits are used up. Add credits in Settings → Plans & credits." };
+    if (status === 402) return { ok: false, error: "AI is temporarily unavailable. Please try again later." };
     if (status === 429) return { ok: false, error: "Too many requests right now. Wait a moment and retry." };
-    if (status === 403) return { ok: false, error: "AI access is blocked for this workspace." };
+    if (status === 403) return { ok: false, error: "AI is temporarily unavailable. Please try again later." };
     return { ok: false, error: "Something went wrong. Please retry." };
   }
 }
@@ -149,6 +150,7 @@ export const checkCv = createServerFn({ method: "POST" })
       const result = streamText({
         model: createGatewayResponsesModel(),
         instructions: PROOF,
+        maxOutputTokens: 8000,
         messages: [{ role: "user", content: [{ type: "text", text: `CV JSON:\n${JSON.stringify(cv)}` }] }],
         output: Output.object({ schema: issuesSchema }),
         providerOptions: {
@@ -162,9 +164,9 @@ export const checkCv = createServerFn({ method: "POST" })
     } catch (err) {
       const status = (err as { statusCode?: number })?.statusCode;
       console.error("Proofread failed", status, err);
-      if (status === 402) return { ok: false, error: "AI credits are used up. Add credits in Settings → Plans & credits." };
+      if (status === 402) return { ok: false, error: "AI is temporarily unavailable. Please try again later." };
       if (status === 429) return { ok: false, error: "Too many requests right now. Wait a moment and retry." };
-      if (status === 403) return { ok: false, error: "AI access is blocked for this workspace." };
+      if (status === 403) return { ok: false, error: "AI is temporarily unavailable. Please try again later." };
       return { ok: false, error: "Couldn't check this CV. Please retry." };
     }
   });

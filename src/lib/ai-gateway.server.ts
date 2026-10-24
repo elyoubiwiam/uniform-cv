@@ -1,5 +1,10 @@
+import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 
+// Primary: Claude Sonnet 5.5 via the Claude API (pay-as-you-go, set ANTHROPIC_API_KEY).
+export const CLAUDE_MODEL = "claude-sonnet-5-5";
+
+// Fallback: Lovable AI Gateway, used only when ANTHROPIC_API_KEY is not set.
 const LOVABLE_AIG_RUN_ID_HEADER = "X-Lovable-AIG-Run-ID";
 export const GATEWAY_BASE_URL = "https://ai.gateway.lovable.dev/v1";
 export const CHAT_MODEL = "openai/gpt-6-astra";
@@ -19,7 +24,10 @@ function createRunIdFetch(initialRunId?: string) {
 }
 
 export function createGatewayResponsesModel() {
-  const apiKey = process.env['LOVABLE_API_KEY'];
+  const anthropicKey = process.env["ANTHROPIC_API_KEY"]?.trim();
+  if (anthropicKey) return createAnthropic({ apiKey: anthropicKey })(CLAUDE_MODEL);
+
+  const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new Error("AI is not configured for this app.");
   const runIdFetch = createRunIdFetch();
   const provider = createOpenAI({
