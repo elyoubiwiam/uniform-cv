@@ -1,6 +1,12 @@
-# Minimal redesign, UX polish and copy clean-up
+# Minimal redesign, recruiter-only focus and copy clean-up
 
 ## What will change
+
+**Recruiters only**
+- Remove the "Who's using Uniform?" choice and the candidate mode entirely. The app always works in recruiter mode (branding, cover page, anonymise, candidate details).
+- Rewrite all site text for recruiters and agencies only. No mention of candidates formatting their own CVs.
+- Copy is short, simple, direct and professional, with no AI-style phrasing and no em dashes.
+- Add this task to the task list and save the recruiter-only focus as a lasting project rule.
 
 **Look and feel**
 - Switch the whole app to Poppins (one font for titles and text), replacing Manrope.
