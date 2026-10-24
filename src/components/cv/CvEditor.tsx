@@ -251,7 +251,7 @@ export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverCh
       </section>}
       {issues.length > 0 && (
         <div className="space-y-2 rounded-md border border-destructive/40 bg-card p-3">
-          <p className="text-xs text-muted-foreground">{issues.length} possible spelling/grammar issue{issues.length > 1 ? "s" : ""}, underlined in red in the preview. Nothing is changed unless you accept it — or just edit the text below.</p>
+          <p className="text-xs text-muted-foreground">{issues.length} possible spelling/grammar issue{issues.length > 1 ? "s" : ""}, underlined in red in the preview. Nothing is changed unless you accept it, or you can edit the text below.</p>
           {issues.map((i) => (
             <div key={i.id} className="flex items-center gap-2 text-sm">
               <span className="min-w-0 flex-1 truncate">

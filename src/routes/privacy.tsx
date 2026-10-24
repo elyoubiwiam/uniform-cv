@@ -4,9 +4,9 @@ import { PageHeader } from "@/components/SiteFooter";
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
-      { title: "Privacy & data — Uniform CV formatter" },
+      { title: "Privacy and data | Uniform" },
       { name: "description", content: "Where CVs go, how long they're kept, and how Uniform approaches UK GDPR." },
-      { property: "og:title", content: "Privacy & data — Uniform CV formatter" },
+      { property: "og:title", content: "Privacy and data | Uniform" },
       { property: "og:description", content: "CVs are read once and never stored on our servers. Here's exactly how candidate data is handled." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -41,7 +41,7 @@ function Privacy() {
       <main className="mx-auto max-w-3xl px-6 py-16">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">Privacy & data</p>
         <h1 className="mt-3 font-display text-5xl font-medium tracking-tight">Read once. Never stored.</h1>
-        <p className="mt-5 text-lg text-muted-foreground">Agencies ask before uploading candidate data, and they should. Here's how it works.</p>
+        <p className="mt-5 text-lg text-muted-foreground">How Uniform handles candidate data for your agency.</p>
         {sections.map(([title, items]) => (
           <section key={title} className="mt-10 border-t border-foreground pt-4">
             <h2 className="font-display text-2xl">{title}</h2>

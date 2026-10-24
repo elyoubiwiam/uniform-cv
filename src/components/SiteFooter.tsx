@@ -4,7 +4,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-border">
       <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-3 px-6 py-6 text-sm text-muted-foreground">
-        <span>Uniform — free</span>
+        <span>Uniform · Free for recruiters</span>
         <nav className="flex gap-4">
           <Link to="/" className="hover:text-foreground">Home</Link>
           <Link to="/privacy" className="hover:text-foreground">Privacy & data</Link>
