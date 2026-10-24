@@ -21,7 +21,7 @@
 - PDF/Word export is generated client-side from the structured CV with individual downloads; why: no file storage needed and exports match the on-screen review.
 - Read PDF text layers in the browser with a bundled PDF.js worker and fall back to the original PDF if any page lacks usable text; why: avoids duplicate document reading while retaining scan support.
 - Candidate CVs live only in browser memory; the template is in localStorage; why: v1 has no backend/accounts and avoids storing personal data.
-- All exports and the preview pass the template through effectiveTemplate(), which strips agency branding and anonymisation in candidate mode; why: branding entered earlier must never leak into a candidate's CV.
+- The UI is recruiter-only: stored templates are forced to audience "recruiter" on load; effectiveTemplate() keeps the candidate branch only as a safety net; why: product focus is agencies, and old saved settings must not reopen candidate mode.
 - Photos/scans (JPG/PNG/WEBP) are sent to the extraction model as image files under the same verbatim rules; why: OCR without a separate service.
 - Footer branding uses bounded, aspect-ratio-preserving logos and reserved space in preview and exports; why: branding cannot overlap candidate content.
 - CV paragraph boundaries and export spacing are handled by the shared CV layout module; why: consistent readable spacing without rewriting source content.
