@@ -100,7 +100,7 @@ export function consultantLine(t: Template) {
 }
 
 export function footerLines(t: Template): [string, string] {
-  return [[t.agencyName, t.footerNote].filter(Boolean).join(" — "), [t.agencyAddress, t.agencyWebsite].filter(Boolean).join("  ·  ")];
+  return [[t.agencyName, t.footerNote].filter(Boolean).join("  ·  "), [t.agencyAddress, t.agencyWebsite].filter(Boolean).join("  ·  ")];
 }
 
 export type StylePreset = { id: string; name: string; note: string; accentColor: string; font: Template["font"]; align: Template["align"] };

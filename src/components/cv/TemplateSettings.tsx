@@ -1,7 +1,6 @@
 import { Palette } from "lucide-react";
 import type { Template } from "@/lib/cv-schema";
 import { StylePicker } from "./StylePicker";
-import { AudiencePicker } from "./AudiencePicker";
 import { RecruiterDetails } from "./RecruiterDetails";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +10,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 
 export function TemplateSettings({ template, onChange }: { template: Template; onChange: (t: Template) => void }) {
   const set = <K extends keyof Template>(k: K, v: Template[K]) => onChange({ ...template, [k]: v });
-  const recruiter = template.audience === "recruiter";
+  const recruiter = true;
 
 
   return (
@@ -27,10 +26,6 @@ export function TemplateSettings({ template, onChange }: { template: Template; o
           <SheetDescription>Every CV is exported in this layout. Saved in this browser.</SheetDescription>
         </SheetHeader>
         <div className="space-y-4 px-4 pb-8">
-          <div className="space-y-2">
-            <Label>Who's using Uniform?</Label>
-            <AudiencePicker template={template} onChange={onChange} />
-          </div>
           <div className="space-y-2">
             <Label>Style inspiration</Label>
             <StylePicker template={template} onChange={onChange} />

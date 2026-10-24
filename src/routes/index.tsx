@@ -4,7 +4,6 @@ import cvAfter from "@/assets/cv-after.jpg";
 import uniformIcon from "@/assets/uniform-icon.png";
 import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
 import { imageType, type ImageType } from "@/lib/file-kind";
-import { AudiencePicker } from "@/components/cv/AudiencePicker";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Download, FileText, Loader2, RotateCw, Scissors, RefreshCw, Undo2, SpellCheck, EyeOff, Trash2, Upload, AlertCircle, FileDown } from "lucide-react";
@@ -30,10 +29,10 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Uniform — Batch CV formatting for recruiters" },
-      { name: "description", content: "Upload a stack of CVs, review them in one standard layout, and export client-ready PDF or Word files." },
-      { property: "og:title", content: "Uniform — Batch CV formatting for recruiters" },
-      { property: "og:description", content: "Turn a pile of CVs into one consistent, client-ready format in minutes." },
+      { title: "Uniform | CV formatting for recruiters" },
+      { name: "description", content: "Upload candidate CVs, review them in your agency template and send client-ready PDF or Word files." },
+      { property: "og:title", content: "Uniform | CV formatting for recruiters" },
+      { property: "og:description", content: "Every candidate CV in your agency format, ready for clients in minutes." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -153,7 +152,7 @@ function Index() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(TEMPLATE_KEY);
-      if (raw) setTemplate({ ...defaultTemplate, ...JSON.parse(raw) });
+      if (raw) setTemplate({ ...defaultTemplate, ...JSON.parse(raw), audience: "recruiter" });
     } catch {
       /* ignore */
     }
@@ -169,7 +168,7 @@ function Index() {
 
   const patch = (id: string, p: Partial<Candidate>) => setCandidates((cs) => cs.map((c) => (c.id === id ? { ...c, ...p } : c)));
 
-  /** The logo links to "/" — the same route the tool lives on — so going home also clears the working session. */
+  /** The logo links to "/", the same route the tool lives on, so going home also clears the working session. */
   const goHome = () => {
     setCandidates([]);
     setSelectedId(null);
@@ -240,7 +239,7 @@ function Index() {
     const ids = downloadReviewIds(candidates, candidateId);
     if (!ids.length) return;
     if (!idsNeedingReview(candidates, ids).length) {
-      // Every CV was already checked and the text hasn't changed since — download straight away.
+      // Every CV was already checked and unchanged: download straight away.
       void exportBatch(kind, ids);
       return;
     }
@@ -295,106 +294,124 @@ function Index() {
     }
   };
 
+  const onLanding = candidates.length === 0 || !started;
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
       <header className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-6 py-3">
           <div className="flex min-w-0 items-center gap-3">
-            <Link to="/" onClick={goHome} className="flex items-center gap-3" aria-label="Uniform — back to homepage">
+            <Link to="/" onClick={goHome} className="flex items-center gap-3" aria-label="Uniform, back to homepage">
               <img src={uniformIcon} alt="" aria-hidden className="h-8 w-8 shrink-0" width={32} height={32} />
               <span className="font-display text-2xl font-semibold leading-none tracking-tight">Uniform<span className="text-accent">.</span></span>
             </Link>
-            <span className="hidden text-sm leading-none text-muted-foreground md:inline">{template.audience === "candidate" ? "Uniform your CV" : "CV formatting for recruiters and candidates"}</span>
+            <span className="hidden text-sm leading-none text-muted-foreground lg:inline">CV formatting for recruiters</span>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="hidden px-2 text-sm text-muted-foreground sm:inline">Free</span>
             <Link to="/privacy" className="hidden px-2 text-sm text-muted-foreground hover:text-foreground sm:inline">Your data</Link>
-            <Button size="sm" variant="outline" disabled={!done.length || exporting || reviewingDownloads} onClick={() => requestDownload("docx")}>
-              <FileDown className="h-4 w-4" /> Word
-            </Button>
-            <Button size="sm" disabled={!done.length || exporting || reviewingDownloads} onClick={() => requestDownload("pdf")} className="bg-accent text-accent-foreground hover:bg-accent/90">
-              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Export {approved.length ? `${approved.length} approved` : done.length ? `all ${done.length}` : ""} PDF
-            </Button>
+            {onLanding ? (
+              <Button size="sm" onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth", block: "center" })}>
+                <Upload className="h-4 w-4" /> Upload CVs
+              </Button>
+            ) : (
+              <>
+                <Button size="sm" variant="outline" disabled={!done.length || exporting || reviewingDownloads} onClick={() => requestDownload("docx")}>
+                  <FileDown className="h-4 w-4" /> Word
+                </Button>
+                <Button size="sm" disabled={!done.length || exporting || reviewingDownloads} onClick={() => requestDownload("pdf")}>
+                  {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  <span className="hidden sm:inline">Export {approved.length ? `${approved.length} approved` : done.length ? `all ${done.length}` : ""}</span> PDF
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </header>
 
-      {candidates.length === 0 || (template.audience === "recruiter" && !started) ? (
-        <main className="mx-auto max-w-3xl px-6 py-20">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">Format only — no rewriting</p>
-          <h1 className="mt-3 font-display text-5xl font-medium leading-[1.05] tracking-tight sm:text-6xl">
-            {template.audience === "candidate" ? <>Your CV in.<br />A structure robots can read out.</> : <>A stack of CVs in.<br />One clean format out.</>}
-          </h1>
-          <p className="mt-5 max-w-xl text-lg text-muted-foreground">
-            {template.audience === "candidate"
-              ? "Drop in your CV in any layout. It's rebuilt in a clean, structured format using your own words, so recruitment software and recruiters both read it correctly."
-              : "Drop in candidate CVs in any layout. Each one is rebuilt in your standard template using the candidate's own words — review, tweak, and send PDFs or Word files to your client."}
-          </p>
-          <div className="mx-auto mt-10 max-w-sm">
-            <BeforeAfterSlider before={cvBefore} after={cvAfter} />
-          </div>
-          <div className="mt-10">
-            <p className="mb-2 text-sm font-medium">1. Who's using Uniform?</p>
-            <AudiencePicker template={template} onChange={updateTemplate} />
-          </div>
-          <div className="mt-6">
-            <p className="mb-2 text-sm font-medium">2. Pick a style to start from <span className="text-muted-foreground">(fine-tune it under Template)</span></p>
-            <StylePicker template={template} onChange={updateTemplate} enlarged />
-            {template.audience === "recruiter" && <label className="mt-4 flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={template.anonymise} onChange={(e) => updateTemplate({ ...template, anonymise: e.target.checked })} className="h-4 w-4 accent-[var(--accent)]" />
-              Anonymise candidates — the name becomes initials and contact details (email, phone, address, links) are removed, so the client can't identify them
-            </label>}
-          </div>
-          {template.audience === "recruiter" && (
-            <section className="mt-8 border-t border-border pt-6">
-              <h2 className="mb-4 text-sm font-medium">3. Your recruiter details <span className="font-normal text-muted-foreground">(optional)</span></h2>
-              <RecruiterDetails template={template} onChange={updateTemplate} />
-            </section>
-          )}
-          <p className="mt-8 text-sm font-medium">{template.audience === "recruiter" ? "4" : "3"}. Add {template.audience === "candidate" ? "your CV" : "your CVs"}</p>
-          <DropZone dragging={dragging} setDragging={setDragging} onFiles={addFiles} inputRef={inputRef} big />
-          {template.audience === "recruiter" && candidates.length > 0 && (
-            <div className="mt-4 space-y-3 rounded-md border border-border bg-card p-4">
-              <p className="text-sm font-medium">{candidates.length} CV{candidates.length > 1 ? "s" : ""} uploaded — check the details above, then start formatting.</p>
-              <ul className="space-y-1">
-                {candidates.map((c) => (
-                  <li key={c.id} className="flex items-center gap-2 text-sm">
-                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate">{c.file.name}</span>
-                    <button className="text-muted-foreground hover:text-destructive" aria-label={`Remove ${c.file.name}`} onClick={() => { setCandidates((cs) => cs.filter((x) => x.id !== c.id)); setSelectedId((s) => (s === c.id ? null : s)); }}><Trash2 className="h-4 w-4" /></button>
-                  </li>
-                ))}
-              </ul>
-              <Button onClick={() => { setSelectedId((s) => s ?? candidates[0]?.id ?? null); setStarted(true); window.scrollTo({ top: 0 }); }}>Start formatting</Button>
+      {onLanding ? (
+        <main className="mx-auto max-w-3xl px-5 py-14 sm:px-6 sm:py-20">
+          <section className="animate-rise text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">For recruitment agencies · Free</p>
+            <h1 className="mt-4 font-display text-4xl font-semibold leading-[1.1] tracking-tight sm:text-6xl">Every CV in your format.<br className="hidden sm:block" /> In minutes.</h1>
+            <p className="mx-auto mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
+              Upload candidate CVs in any layout. Uniform rebuilds each one in your agency template, word for word, ready to send to clients.
+            </p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Button size="lg" className="h-12 w-full px-8 text-base shadow-md sm:w-auto" onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth", block: "center" })}>
+                <Upload className="h-5 w-5" /> Upload CVs
+              </Button>
+              <Button size="lg" variant="ghost" className="h-12 w-full text-base sm:w-auto" onClick={() => document.getElementById("example")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+                See an example
+              </Button>
             </div>
-          )}
-          <ol className="mt-10 grid gap-4 text-sm sm:grid-cols-3">
-            {["Upload PDFs or Word files in bulk", "Review each CV side by side", "Download each as PDF or Word"].map((s, i) => (
-              <li key={s} className="border-t border-foreground pt-3">
-                <span className="font-display text-2xl text-accent">0{i + 1}</span>
-                <p className="mt-1">{s}</p>
+          </section>
+
+          <ol className="mt-14 grid gap-3 sm:grid-cols-3">
+            {[["Upload", "PDF, Word or scans, in bulk."], ["Review", "Check and edit each CV."], ["Send", "Download PDF or Word."]].map(([t, d], i) => (
+              <li key={t} className="animate-rise rounded-lg bg-card p-5 shadow-sm" style={{ animationDelay: `${i * 80}ms` }}>
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">{i + 1}</span>
+                <p className="mt-3 font-semibold">{t}</p>
+                <p className="text-sm text-muted-foreground">{d}</p>
               </li>
             ))}
           </ol>
-          <div className="mt-12 rounded-md border border-border bg-card p-6">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">Why structure matters</p>
-            <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-              Before a human reads your CV, a robot parser does. Recruitment software scans the content for skills,
-              roles, dates and contact details, and it only reads them correctly when a CV is cleanly structured.
-              A great CV in a messy layout can get misread or overlooked. Uniform exists for exactly that: it
-              rebuilds every CV into one structured format that robots and recruiters both read accurately.
-            </p>
-          </div>
-          <div className="mt-6 rounded-md border border-border p-6">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">Your data</p>
-            <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-              CVs are sent once to our AI service to read them and are not stored on our servers. They stay in this browser tab and
-              disappear when you refresh. No accounts, no database, no training on your files. Designed with UK GDPR in mind.{" "}
-              <Link to="/privacy" className="text-foreground underline">How data is handled</Link>
-            </p>
-          </div>
+
+          <section id="example" className="mt-16 scroll-mt-24">
+            <h2 className="text-center text-2xl font-semibold tracking-tight">Before and after</h2>
+            <div className="mx-auto mt-6 max-w-sm">
+              <BeforeAfterSlider before={cvBefore} after={cvAfter} />
+            </div>
+          </section>
+
+          <section className="mt-16 space-y-10 rounded-xl bg-card p-5 shadow-sm sm:p-8">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight"><span className="text-accent">1.</span> Choose a style</h2>
+              <p className="mb-4 mt-1 text-sm text-muted-foreground">You can change it at any time.</p>
+              <StylePicker template={template} onChange={updateTemplate} enlarged />
+              <label className="mt-6 flex items-start gap-3 rounded-lg bg-muted p-4 text-sm">
+                <input type="checkbox" checked={template.anonymise} onChange={(e) => updateTemplate({ ...template, anonymise: e.target.checked })} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]" />
+                <span><span className="font-medium">Anonymise candidates.</span> <span className="text-muted-foreground">Names become initials. Email, phone, address and links are removed.</span></span>
+              </label>
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight"><span className="text-accent">2.</span> Add your details <span className="text-sm font-normal text-muted-foreground">(optional)</span></h2>
+              <p className="mb-4 mt-1 text-sm text-muted-foreground">Shown on the cover page and footer.</p>
+              <RecruiterDetails template={template} onChange={updateTemplate} />
+            </div>
+            <div id="upload" className="scroll-mt-24">
+              <h2 className="text-xl font-semibold tracking-tight"><span className="text-accent">3.</span> Upload CVs</h2>
+              <DropZone dragging={dragging} setDragging={setDragging} onFiles={addFiles} inputRef={inputRef} big />
+              {candidates.length > 0 && (
+                <div className="animate-rise mt-4 space-y-3 rounded-lg border border-border p-4">
+                  <p className="text-sm font-medium">{candidates.length} CV{candidates.length > 1 ? "s" : ""} ready. Check the list, then start.</p>
+                  <ul className="space-y-1">
+                    {candidates.map((c) => (
+                      <li key={c.id} className="flex items-center gap-2 text-sm">
+                        <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 flex-1 truncate">{c.file.name}</span>
+                        <button className="text-muted-foreground hover:text-destructive" aria-label={`Remove ${c.file.name}`} onClick={() => { setCandidates((cs) => cs.filter((x) => x.id !== c.id)); setSelectedId((s) => (s === c.id ? null : s)); }}><Trash2 className="h-4 w-4" /></button>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button size="lg" className="w-full sm:w-auto" onClick={() => { setSelectedId((s) => s ?? candidates[0]?.id ?? null); setStarted(true); window.scrollTo({ top: 0 }); }}>Start formatting</Button>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="mt-16 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl bg-card p-6 shadow-sm">
+              <h2 className="font-semibold">Built for ATS platforms</h2>
+              <p className="mt-2 text-sm text-muted-foreground">Applicant tracking systems read structure, not design. A clean, consistent layout means skills, roles and dates are read correctly.</p>
+            </div>
+            <div className="rounded-xl bg-card p-6 shadow-sm">
+              <h2 className="font-semibold">Your data</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                CVs are read once and never stored. They stay in this tab until you refresh. Designed for UK GDPR.{" "}
+                <Link to="/privacy" className="font-medium text-accent underline underline-offset-2">Learn more</Link>
+              </p>
+            </div>
+          </section>
         </main>
       ) : (
         <main className={cn("mx-auto grid gap-6 px-6 py-6", desktopView === "compare" ? "max-w-[1800px] lg:grid-cols-1" : "max-w-[1500px] lg:grid-cols-[300px_1fr]")}>
@@ -461,7 +478,7 @@ function Index() {
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h2 className="font-display text-3xl">{selected.cv.fullName || "Candidate"}</h2>
-                    <p className="text-sm text-muted-foreground">From {selected.file.name}{selected.scanned && <span className="ml-2 rounded-sm bg-accent/10 px-1.5 py-0.5 text-xs text-accent">Read from a scan — check carefully</span>}{effectiveTemplate(template).anonymise && <span className="ml-2 inline-flex items-center gap-1"><EyeOff className="h-3 w-3" /> Anonymised</span>}</p>
+                    <p className="text-sm text-muted-foreground">From {selected.file.name}{selected.scanned && <span className="ml-2 rounded-sm bg-accent/10 px-1.5 py-0.5 text-xs text-accent">Read from a scan. Check carefully</span>}{effectiveTemplate(template).anonymise && <span className="ml-2 inline-flex items-center gap-1"><EyeOff className="h-3 w-3" /> Anonymised</span>}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" size="sm" disabled={exporting || reviewingDownloads || selected.checking} onClick={() => requestDownload("docx", selected.id)}>
@@ -519,7 +536,7 @@ function Index() {
                     <TabsTrigger value="compare">Compare</TabsTrigger>
                   </TabsList>
                   <TabsContent value="side"><CvPreview cv={selected.cv} template={template} cover={selected.cover} issues={liveIssues(selected.cv, selected.issues ?? [])} /></TabsContent>
-                  <TabsContent value="edit"><CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={template.audience === "recruiter" ? (cover) => patch(selected.id, { cover }) : undefined} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} /></TabsContent>
+                  <TabsContent value="edit"><CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={(cover) => patch(selected.id, { cover })} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} /></TabsContent>
                   <TabsContent value="compare" className="space-y-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original</p>
                     <OriginalView file={selected.file} />
@@ -536,7 +553,7 @@ function Index() {
                 <div className={`hidden gap-8 lg:grid ${desktopView === "compare" ? "lg:grid-cols-2" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"}`}>
                   <div className="min-w-0">
                     {desktopView === "edit" ? (
-                      <CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={template.audience === "recruiter" ? (cover) => patch(selected.id, { cover }) : undefined} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} />
+                      <CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={(cover) => patch(selected.id, { cover })} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} />
                     ) : (
                       <>
                         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original · {selected.file.name}</p>

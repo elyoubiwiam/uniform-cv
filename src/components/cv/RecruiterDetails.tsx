@@ -69,7 +69,7 @@ export function RecruiterDetails({ template, onChange }: { template: Template; o
               {field("consultantEmail", "Email", "sarah@northbridge.co.uk")}
               {field("consultantPhone", "Phone", "+44 20 7946 0000")}
               <p className="pt-2 text-xs font-semibold uppercase tracking-[0.15em] text-accent">Footer</p>
-              {field("footerNote", "Footer note", "e.g. Confidential — Reg. no. 01234567")}
+              {field("footerNote", "Footer note", "e.g. Confidential. Reg. no. 01234567")}
               {field("agencyAddress", "Address", "e.g. 12 King St, London EC2V 8AA")}
               {field("agencyWebsite", "Website", "northbridge.co.uk")}
               <div className="flex items-center justify-between rounded-md border border-border p-3">

@@ -25,3 +25,5 @@
 - [x] Notes box for the recruiter's own notes
 - [ ] Pull CVs from an ATS (next planned step)
 - [x] Recruiter upload: stay on upload screen; button to go to formatting
+- [x] Minimal redesign: Poppins, terracotta palette, clearer landing CTAs, UK English, no em dashes
+- [x] Recruiter-only product: candidate mode removed from UI and copy
