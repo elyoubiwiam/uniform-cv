@@ -361,7 +361,7 @@ function Index() {
                 ref={quickInputRef}
                 type="file"
                 accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
-                className="hidden"
+                className="sr-only"
                 aria-label="Quick CV edit: choose a CV file"
                 onChange={(e) => {
                   if (e.target.files?.length) quickEdit(e.target.files);
