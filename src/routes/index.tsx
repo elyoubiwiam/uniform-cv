@@ -120,6 +120,7 @@ function Index() {
   const [downloadRequest, setDownloadRequest] = useState<{ kind: "pdf" | "docx"; ids: string[] } | null>(null);
   const [reviewingDownloads, setReviewingDownloads] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const quickInputRef = useRef<HTMLInputElement>(null);
   const running = useRef(new Set<string>());
   const templateRef = useRef(template);
   templateRef.current = template;
@@ -346,13 +347,27 @@ function Index() {
             <p className="mx-auto mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
               Upload candidate CVs in any layout. Uniform rebuilds each one in your agency template, word for word, ready to send to clients.
             </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap">
               <Button size="lg" className="h-12 w-full px-8 text-base shadow-md sm:w-auto" onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth", block: "center" })}>
                 <Upload className="h-5 w-5" /> Upload CVs
+              </Button>
+              <Button size="lg" variant="outline" className="h-12 w-full px-8 text-base sm:w-auto" onClick={() => quickInputRef.current?.click()}>
+                <FilePenLine className="h-5 w-5" /> Quick CV edit
               </Button>
               <Button size="lg" variant="ghost" className="h-12 w-full text-base sm:w-auto" onClick={() => document.getElementById("example")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
                 See an example
               </Button>
+              <input
+                ref={quickInputRef}
+                type="file"
+                accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
+                className="hidden"
+                aria-label="Quick CV edit: choose a CV file"
+                onChange={(e) => {
+                  if (e.target.files?.length) quickEdit(e.target.files);
+                  e.target.value = "";
+                }}
+              />
             </div>
           </section>
 
