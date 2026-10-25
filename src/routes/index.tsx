@@ -6,7 +6,7 @@ import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
 import { imageType, type ImageType } from "@/lib/file-kind";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Download, FileText, Loader2, RotateCw, Scissors, RefreshCw, Undo2, SpellCheck, EyeOff, Trash2, Upload, AlertCircle, FileDown } from "lucide-react";
+import { Check, Download, FilePenLine, FileText, Loader2, RotateCw, Scissors, RefreshCw, Undo2, SpellCheck, EyeOff, Trash2, Upload, AlertCircle, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { checkCv, extractCv, shortenCv } from "@/lib/cv.functions";
 import { liveIssues } from "@/lib/proofread";
@@ -205,7 +205,7 @@ function Index() {
     queued.slice(0, Math.max(0, free)).forEach((c) => void process(c));
   }, [candidates, process]);
 
-  const addFiles = (files: FileList | File[]) => {
+  const addFiles = (files: FileList | File[]): Candidate[] => {
     const next: Candidate[] = [];
     for (const f of Array.from(files)) {
       if (!/\.(pdf|docx|txt|png|jpe?g|webp)$/i.test(f.name)) {
