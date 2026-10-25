@@ -218,9 +218,19 @@ function Index() {
       }
       next.push({ id: crypto.randomUUID(), file: f, status: "queued", cv: null, originalCv: null, shortenAttempt: 0, shortening: false, error: null });
     }
-    if (!next.length) return;
+    if (!next.length) return [];
     setCandidates((cs) => [...cs, ...next]);
     setSelectedId((s) => s ?? next[0]?.id ?? null);
+    return next;
+  };
+
+  /** One-off edit: add the file and open the editor straight away, skipping the confirmation list. */
+  const quickEdit = (files: FileList | File[]) => {
+    const added = addFiles(files);
+    if (!added.length) return;
+    setSelectedId(added[0].id);
+    setStarted(true);
+    window.scrollTo({ top: 0 });
   };
 
   const selectedRaw = candidates.find((c) => c.id === selectedId) ?? null;
