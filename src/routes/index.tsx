@@ -227,9 +227,9 @@ function Index() {
 
   /** One-off edit: add the file and open the editor straight away, skipping the confirmation list. */
   const quickEdit = (files: FileList | File[]) => {
-    const added = addFiles(files);
-    if (!added.length) return;
-    setSelectedId(added[0].id);
+    const first = addFiles(files)[0];
+    if (!first) return;
+    setSelectedId(first.id);
     setStarted(true);
     window.scrollTo({ top: 0 });
   };
