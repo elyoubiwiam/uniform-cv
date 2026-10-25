@@ -6,7 +6,7 @@ import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
 import { imageType, type ImageType } from "@/lib/file-kind";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Download, FileText, Loader2, RotateCw, Scissors, RefreshCw, Undo2, SpellCheck, EyeOff, Trash2, Upload, AlertCircle, FileDown } from "lucide-react";
+import { Check, Download, FilePenLine, FileText, Loader2, RotateCw, Scissors, RefreshCw, Undo2, SpellCheck, EyeOff, Trash2, Upload, AlertCircle, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { checkCv, extractCv, shortenCv } from "@/lib/cv.functions";
 import { liveIssues } from "@/lib/proofread";
@@ -120,6 +120,7 @@ function Index() {
   const [downloadRequest, setDownloadRequest] = useState<{ kind: "pdf" | "docx"; ids: string[] } | null>(null);
   const [reviewingDownloads, setReviewingDownloads] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const quickInputRef = useRef<HTMLInputElement>(null);
   const running = useRef(new Set<string>());
   const templateRef = useRef(template);
   templateRef.current = template;
@@ -205,7 +206,7 @@ function Index() {
     queued.slice(0, Math.max(0, free)).forEach((c) => void process(c));
   }, [candidates, process]);
 
-  const addFiles = (files: FileList | File[]) => {
+  const addFiles = (files: FileList | File[]): Candidate[] => {
     const next: Candidate[] = [];
     for (const f of Array.from(files)) {
       if (!/\.(pdf|docx|txt|png|jpe?g|webp)$/i.test(f.name)) {
@@ -218,9 +219,19 @@ function Index() {
       }
       next.push({ id: crypto.randomUUID(), file: f, status: "queued", cv: null, originalCv: null, shortenAttempt: 0, shortening: false, error: null });
     }
-    if (!next.length) return;
+    if (!next.length) return [];
     setCandidates((cs) => [...cs, ...next]);
     setSelectedId((s) => s ?? next[0]?.id ?? null);
+    return next;
+  };
+
+  /** One-off edit: add the file and open the editor straight away, skipping the confirmation list. */
+  const quickEdit = (files: FileList | File[]) => {
+    const first = addFiles(files)[0];
+    if (!first) return;
+    setSelectedId(first.id);
+    setStarted(true);
+    window.scrollTo({ top: 0 });
   };
 
   const selectedRaw = candidates.find((c) => c.id === selectedId) ?? null;
@@ -336,14 +347,29 @@ function Index() {
             <p className="mx-auto mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
               Upload candidate CVs in any layout. Uniform rebuilds each one in your agency template, word for word, ready to send to clients.
             </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap">
               <Button size="lg" className="h-12 w-full px-8 text-base shadow-md sm:w-auto" onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth", block: "center" })}>
                 <Upload className="h-5 w-5" /> Upload CVs
+              </Button>
+              <Button size="lg" variant="outline" className="h-12 w-full px-8 text-base sm:w-auto" onClick={() => quickInputRef.current?.click()}>
+                <FilePenLine className="h-5 w-5" /> Quick CV edit
               </Button>
               <Button size="lg" variant="ghost" className="h-12 w-full text-base sm:w-auto" onClick={() => document.getElementById("example")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
                 See an example
               </Button>
+              <input
+                ref={quickInputRef}
+                type="file"
+                accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
+                className="sr-only"
+                aria-label="Quick CV edit: choose a CV file"
+                onChange={(e) => {
+                  if (e.target.files?.length) quickEdit(e.target.files);
+                  e.target.value = "";
+                }}
+              />
             </div>
+            <p className="mx-auto mt-4 max-w-md text-sm text-muted-foreground">Quick CV edit: fix the text in one CV and download it again as PDF or Word.</p>
           </section>
 
           <ol className="mt-14 grid gap-3 sm:grid-cols-3">

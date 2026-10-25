@@ -1,5 +1,6 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
+import type { LanguageModel } from "ai";
 
 // Primary: Claude via the Claude API (pay-as-you-go, set ANTHROPIC_API_KEY).
 // Optional CLAUDE_MODEL secret switches model without a code change, e.g. "claude-haiku-5-5".
@@ -29,9 +30,10 @@ function createRunIdFetch(initialRunId?: string) {
   };
 }
 
-export function createGatewayResponsesModel() {
+// The providers bundle their own @ai-sdk/provider copy, so cast to the app's LanguageModel type.
+export function createGatewayResponsesModel(): LanguageModel {
   const anthropicKey = process.env["ANTHROPIC_API_KEY"]?.trim();
-  if (anthropicKey) return createAnthropic({ apiKey: anthropicKey })(claudeModel());
+  if (anthropicKey) return createAnthropic({ apiKey: anthropicKey })(claudeModel()) as unknown as LanguageModel;
 
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new Error("AI is not configured for this app.");
@@ -42,5 +44,5 @@ export function createGatewayResponsesModel() {
     headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
     fetch: runIdFetch.fetch,
   });
-  return provider.responses(CHAT_MODEL);
+  return provider.responses(CHAT_MODEL) as unknown as LanguageModel;
 }
