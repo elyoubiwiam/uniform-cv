@@ -44,5 +44,5 @@ export function createGatewayResponsesModel(): LanguageModel {
     headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
     fetch: runIdFetch.fetch,
   });
-  return provider.responses(CHAT_MODEL);
+  return provider.responses(CHAT_MODEL) as unknown as LanguageModel;
 }
