@@ -369,6 +369,7 @@ function Index() {
                 }}
               />
             </div>
+            <p className="mx-auto mt-4 max-w-md text-sm text-muted-foreground">Quick CV edit: fix the text in one CV and download it again as PDF or Word.</p>
           </section>
 
           <ol className="mt-14 grid gap-3 sm:grid-cols-3">
