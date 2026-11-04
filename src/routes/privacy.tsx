@@ -30,7 +30,7 @@ const sections: [string, string[]][] = [
     "Uniform is designed with UK GDPR in mind. When a recruitment agency uses Uniform, the agency remains the data controller for its candidates' data, and Uniform acts as a processor on its behalf, only to format CVs.",
     "Data is kept to a minimum: we only process what's in the file, only for as long as it takes to read it.",
     "Anonymise mode can remove names, contact details and other personal details before a CV is shared with a client.",
-    "For data requests or a data processing agreement, contact privacy@uniform.example (placeholder until confirmed).",
+    "For data requests or a data processing agreement, contact elyoubi.wia@gmail.com.",
   ]],
 ];
 
