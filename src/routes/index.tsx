@@ -10,6 +10,7 @@ import { Check, Download, FilePenLine, FileText, Loader2, RotateCw, Scissors, Re
 import { toast } from "sonner";
 import { checkCv, extractCv, shortenCv } from "@/lib/cv.functions";
 import { liveIssues } from "@/lib/proofread";
+import { anonymiseLeaks, checkVerbatim } from "@/lib/verbatim";
 import { StylePicker } from "@/components/cv/StylePicker";
 import { defaultTemplate, effectiveTemplate, separateCategories, type Template } from "@/lib/cv-schema";
 import { buildDocx, buildPdf, downloadBlob, safeFileName } from "@/lib/cv-export";
@@ -188,7 +189,20 @@ function Index() {
         const payload = await fileToPayload(c.file);
         if (!payload.data.trim()) throw new Error("This file has no readable text.");
         const res = await extract({ data: { filename: c.file.name, ...payload, anonymise: effectiveTemplate(templateRef.current).anonymise } });
-        if (res.ok) patch(c.id, { status: "ready", cv: res.cv, originalCv: res.cv, shortenAttempt: 0, scanned: payload.kind !== "text" });
+        if (res.ok) {
+          const anonymised = effectiveTemplate(templateRef.current).anonymise;
+          const source = [payload.data, ...payload.hyperlinks].join("\n");
+          const text = payload.kind === "text";
+          patch(c.id, {
+            status: "ready",
+            cv: res.cv,
+            originalCv: res.cv,
+            shortenAttempt: 0,
+            scanned: !text,
+            verbatim: text ? checkVerbatim(source, res.cv, anonymised) : null,
+            leaks: text && anonymised ? anonymiseLeaks(source, res.cv) : [],
+          });
+        }
         else patch(c.id, { status: "error", error: res.error });
       } catch (e) {
         patch(c.id, { status: "error", error: e instanceof Error ? e.message : "Couldn't read this file." });
@@ -433,7 +447,7 @@ function Index() {
             <div className="rounded-xl bg-card p-6 shadow-sm">
               <h2 className="font-semibold">Your data</h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                CVs are read once and never stored. They stay in this tab until you refresh. Designed for UK GDPR.{" "}
+                Uniform doesn't keep your CVs. They stay in this tab until you refresh. Claude reads them for us, and Anthropic deletes them within 30 days by default. Designed with UK GDPR in mind.{" "}
                 <Link to="/privacy" className="font-medium text-accent underline underline-offset-2">Learn more</Link>
               </p>
             </div>
@@ -531,6 +545,7 @@ function Index() {
                     )}
                   </div>
                 </div>
+                <VerbatimNotice candidate={selected} />
                 <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2 text-sm">
                   <span className="px-1 text-muted-foreground">Length:</span>
                   {selected.shortenAttempt === 0 ? (
@@ -619,6 +634,33 @@ function Index() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/** Result of the word-for-word check made when the CV was read. Not shown for scans or shortened versions. */
+function VerbatimNotice({ candidate }: { candidate: Candidate }) {
+  const { verbatim, leaks, shortenAttempt } = candidate;
+  if (leaks?.length) {
+    return (
+      <p className="mb-4 flex items-start gap-2 rounded-md border border-destructive p-2 text-sm">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+        <span>Personal details are still in this anonymised CV: {leaks.join(", ")}. Remove them before sharing.</span>
+      </p>
+    );
+  }
+  if (!verbatim || shortenAttempt > 0) return null;
+  if (verbatim.passed) {
+    return <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground"><Check className="h-4 w-4 shrink-0 text-success" /> Word-for-word check passed. Nothing added and no large gaps found.</p>;
+  }
+  return (
+    <div className="mb-4 flex items-start gap-2 rounded-md border border-border bg-card p-2 text-sm">
+      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+      <div className="min-w-0">
+        <p className="font-medium">Check this CV against the original.</p>
+        {verbatim.added.length > 0 && <p className="text-muted-foreground">Not found in the original: {verbatim.added.slice(0, 12).join(", ")}{verbatim.added.length > 12 ? ` and ${verbatim.added.length - 12} more` : ""}</p>}
+        {verbatim.missingCount > 0 && <p className="text-muted-foreground">{verbatim.missingCount} words from the original are missing, for example: {verbatim.missingSample.join(", ")}</p>}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { CV } from "@/lib/cv-schema";
 import type { Issue } from "@/lib/proofread";
 import type { RecruiterCover } from "@/lib/cv-cover";
+import type { VerbatimResult } from "@/lib/verbatim";
 
 export type Status = "queued" | "reading" | "ready" | "approved" | "error";
 
@@ -18,5 +19,9 @@ export type Candidate = {
   // Snapshot of the CV text at the last successful spelling check, so we only re-prompt when the text changed since.
   checkedCv?: string;
   scanned?: boolean;
+  // Word-for-word check against the source text. Null for scans, where there is no text to compare with.
+  verbatim?: VerbatimResult | null;
+  // Personal details found in an anonymised CV.
+  leaks?: string[];
   cover?: RecruiterCover;
 };

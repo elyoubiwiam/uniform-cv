@@ -17,7 +17,9 @@
 - CV editor fields auto-size on text, width, visibility and font changes, and the editor uses normal page scrolling; why: hidden desktop panels must not retain clipped measurements and all content must stay reachable.
 - Preview PDF page counts are read from the actual client-generated export; why: matches downloaded pagination and updates with CV/template changes.
 - Compare mode renders every page of both the original and generated PDF through one shared PDF.js viewer with independent navigation; why: keeps page scale, boundaries, zoom and page controls identical.
-- CV extraction runs in a server function (`src/lib/cv.functions.ts`) calling Claude Sonnet 5.5 via the Claude API when ANTHROPIC_API_KEY is set (falling back to Lovable AI Gateway Responses otherwise) with a strict zod schema; why: keeps the key server-side, output uniform, and AI cost on pay-as-you-go billing.
+- CV extraction runs in a server function (`src/lib/cv.functions.ts`) calling Claude Sonnet 5.5 via the Claude API with a strict zod schema and no fallback provider; why: keeps the key server-side, output uniform, AI cost on pay-as-you-go billing, and CVs only with the provider named on the privacy page.
+- AI errors are logged by error name and status only; why: full SDK errors can contain the request, and so CV text.
+- Word-for-word and anonymise checks run in the browser after extraction (`src/lib/verbatim.ts`) and are stored on the in-memory candidate; why: source text never needs to leave the browser again, and the recruiter is warned without blocking review.
 - PDF/Word export is generated client-side from the structured CV with individual downloads; why: no file storage needed and exports match the on-screen review.
 - Read PDF text layers in the browser with a bundled PDF.js worker and fall back to the original PDF if any page lacks usable text; why: avoids duplicate document reading while retaining scan support.
 - Candidate CVs live only in browser memory; the template is in localStorage; why: v1 has no backend/accounts and avoids storing personal data.

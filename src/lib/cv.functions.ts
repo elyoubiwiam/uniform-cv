@@ -46,6 +46,11 @@ export type ExtractResult = { ok: true; cv: CV } | { ok: false; error: string };
 
 type Content = Array<{ type: "text"; text: string } | { type: "file"; filename: string; data: string; mediaType: string }>;
 
+/** Full AI errors can include the request, and so the CV. Log only the kind of error. */
+function errorName(err: unknown) {
+  return err instanceof Error ? err.name : "UnknownError";
+}
+
 function preserveFixedFields(original: CV, proposed: CV): CV {
   const experience = original.experience.map((role, index) => ({
     ...role,
@@ -62,24 +67,15 @@ function preserveFixedFields(original: CV, proposed: CV): CV {
 
 async function runCv(instructions: string, content: Content): Promise<ExtractResult> {
   const { streamText, Output, NoObjectGeneratedError } = await import("ai");
-  const { createGatewayResponsesModel } = await import("./ai-gateway.server");
+  const { createClaudeModel } = await import("./ai-gateway.server");
   try {
     const result = streamText({
-      model: createGatewayResponsesModel(),
-      maxRetries: 0,
+      model: createClaudeModel(),
+      maxRetries: 2,
       maxOutputTokens: 16000,
       instructions,
       messages: [{ role: "user", content }],
       output: Output.object({ schema: cvSchema }),
-      providerOptions: {
-        openai: {
-          forceReasoning: true,
-          reasoningEffort: "low",
-          reasoningSummary: "auto",
-          store: false,
-          include: ["reasoning.encrypted_content"],
-        },
-      },
     });
     const cv = separateCategories(reflowCv(await result.output));
     return { ok: true, cv };
@@ -88,7 +84,7 @@ async function runCv(instructions: string, content: Content): Promise<ExtractRes
       return { ok: false, error: "Couldn't read this CV's structure. Try another file format." };
     }
     const status = (err as { statusCode?: number })?.statusCode;
-    console.error("CV AI call failed", status, err);
+    console.error("CV AI call failed", status, errorName(err));
     if (status === 402) return { ok: false, error: "AI is temporarily unavailable. Please try again later." };
     if (status === 429) return { ok: false, error: "Too many requests right now. Wait a moment and retry." };
     if (status === 403) return { ok: false, error: "AI is temporarily unavailable. Please try again later." };
@@ -144,18 +140,15 @@ export const checkCv = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ cv: cvSchema }).parse(d))
   .handler(async ({ data }): Promise<CheckResult> => {
     const { streamText, Output } = await import("ai");
-    const { createGatewayResponsesModel } = await import("./ai-gateway.server");
+    const { createClaudeModel } = await import("./ai-gateway.server");
     const { hyperlinks: _h, ...cv } = data.cv;
     try {
       const result = streamText({
-        model: createGatewayResponsesModel(),
+        model: createClaudeModel(),
         instructions: PROOF,
         maxOutputTokens: 8000,
         messages: [{ role: "user", content: [{ type: "text", text: `CV JSON:\n${JSON.stringify(cv)}` }] }],
         output: Output.object({ schema: issuesSchema }),
-        providerOptions: {
-          openai: { forceReasoning: true, reasoningEffort: "low", reasoningSummary: "auto", store: false, include: ["reasoning.encrypted_content"] },
-        },
       });
       const out = await result.output;
       const all = JSON.stringify(cv);
@@ -163,7 +156,7 @@ export const checkCv = createServerFn({ method: "POST" })
       return { ok: true, issues };
     } catch (err) {
       const status = (err as { statusCode?: number })?.statusCode;
-      console.error("Proofread failed", status, err);
+      console.error("Proofread failed", status, errorName(err));
       if (status === 402) return { ok: false, error: "AI is temporarily unavailable. Please try again later." };
       if (status === 429) return { ok: false, error: "Too many requests right now. Wait a moment and retry." };
       if (status === 403) return { ok: false, error: "AI is temporarily unavailable. Please try again later." };

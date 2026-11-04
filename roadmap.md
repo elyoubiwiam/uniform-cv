@@ -27,3 +27,6 @@
 - [x] Recruiter upload: stay on upload screen; button to go to formatting
 - [x] Minimal redesign: Poppins, terracotta palette, clearer landing CTAs, UK English, no em dashes
 - [x] Recruiter-only product: candidate mode removed from UI and copy
+- [x] Privacy copy matches real data handling, including Anthropic's default 30-day API retention
+- [x] Word-for-word check against source text, and contact-detail check on anonymised CVs
+- [x] Remove the Lovable AI fallback, stop logging full AI errors, retry failed extraction calls

@@ -23,7 +23,7 @@ Need to fix just one CV? **Quick CV edit** on the start page opens a single file
 
 ## Key features
 
-- **Format only, no rewriting:** the candidate's own words are kept.
+- **Format only, no rewriting:** the candidate's own words are kept, and each CV gets an automatic word-for-word check against its source text (not available for scans).
 - **Style picker:** Modern, Classic, Minimal and Executive templates, each shown with a real rendered example and fine-tunable under *Template*.
 - **Recruiter branding:** consultant details, an agency footer and a small logo in the reserved footer space, applied consistently across preview, PDF and Word. The logo background can be removed if needed.
 - **Recruiter cover page:** an optional first page with your details and logo on every formatted export.
@@ -37,7 +37,7 @@ Need to fix just one CV? **Quick CV edit** on the start page opens a single file
 
 ## Privacy
 
-Uniform is free to use and needs no account. A dedicated privacy and data page explains how CV data is handled. Most of the work (editing, comparing, PDF and Word generation) runs entirely in the browser. Only text extraction, shortening and proofreading call an AI service.
+Uniform is free to use and needs no account. A dedicated privacy and data page explains how CV data is handled. Most of the work (editing, comparing, PDF and Word generation) runs entirely in the browser. Only text extraction, shortening and proofreading call an AI service: the Claude API from Anthropic, which by default deletes API data within 30 days and doesn't train on it.
 
 ## Tech stack
 
@@ -57,7 +57,7 @@ Set these as project secrets:
 | `ANTHROPIC_API_KEY` | Claude API key. Required for the primary AI path. |
 | `CLAUDE_MODEL` | Optional. Switches model without a code change, e.g. `claude-haiku-5-5`. Defaults to `claude-sonnet-5-5`. |
 
-If `ANTHROPIC_API_KEY` is not set, Uniform falls back to the Lovable AI Gateway.
+There is no fallback provider. If `ANTHROPIC_API_KEY` is not set, AI features return an error.
 
 ## Roadmap
 
