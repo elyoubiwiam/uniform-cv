@@ -17,7 +17,7 @@ export function TemplateSettings({ template, onChange }: { template: Template; o
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm">
-          <Palette className="h-4 w-4" /> Template
+          <Palette className="h-4 w-4" /> Design
         </Button>
       </SheetTrigger>
       <SheetContent className="space-y-5 overflow-y-auto">

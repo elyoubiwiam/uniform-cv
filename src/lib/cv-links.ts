@@ -1,6 +1,8 @@
 /** Destination identity: normalise the host, never case-sensitive paths or query values. */
 export function linkKey(value: string): string {
   const trimmed = value.trim();
+  const email = emailAddress(trimmed);
+  if (email) return `mailto:${email.toLowerCase()}`;
   try {
     const url = new URL(/^[a-z][a-z\d+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`);
     if (url.protocol === "http:" || url.protocol === "https:") {
@@ -10,6 +12,16 @@ export function linkKey(value: string): string {
   } catch {
     return trimmed;
   }
+}
+
+/** Mailto is a click target, not visible CV text. */
+export function emailAddress(value: string): string | null {
+  const address = value.trim().replace(/^mailto:/i, "").split("?")[0] ?? "";
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address) ? address : null;
+}
+
+export function displayLink(value: string): string {
+  return /^mailto:/i.test(value.trim()) ? emailAddress(value) ?? value : value;
 }
 
 export function uniqueLinks(values: string[]): string[] {
@@ -26,7 +38,7 @@ export function uniqueHyperlinks(values: { text: string; url: string }[]) {
   const out: { text: string; url: string }[] = [];
   const positions = new Map<string, number>();
   for (const value of values) {
-    const text = value.text.trim();
+    const text = displayLink(value.text.trim());
     const url = value.url.trim();
     if (!text || !url) continue;
     const key = linkKey(url);
@@ -43,10 +55,11 @@ export function uniqueHyperlinks(values: { text: string; url: string }[]) {
   return out;
 }
 
-export function cleanCvLinks<T extends { links: string[]; hyperlinks: { text: string; url: string }[] }>(cv: T): T {
-  const hyperlinks = uniqueHyperlinks(cv.hyperlinks);
+export function cleanCvLinks<T extends { email?: string | null; links: string[]; hyperlinks: { text: string; url: string }[] }>(cv: T): T {
+  const email = cv.email ? linkKey(cv.email) : null;
+  const hyperlinks = uniqueHyperlinks(cv.hyperlinks).filter((link) => linkKey(link.url) !== email);
   const titled = new Set(hyperlinks.map((link) => linkKey(link.url)));
-  return { ...cv, hyperlinks, links: uniqueLinks(cv.links).filter((link) => !titled.has(linkKey(link))) };
+  return { ...cv, hyperlinks, links: uniqueLinks(cv.links).filter((link) => linkKey(link) !== email && !titled.has(linkKey(link))).map(displayLink) };
 }
 
 /** The file's annotation targets are authoritative, not the model's reconstruction. */

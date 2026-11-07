@@ -5,7 +5,7 @@ import { hasFormatting, parseFormatting } from "./cv-format";
 import { normalizeSkills } from "./cv-skills";
 import { recruiterCoverContent, type RecruiterCover } from "./cv-cover";
 import { fitRecruiterCover } from "./cv-cover-layout";
-import { linkKey, uniqueLinks, uniqueHyperlinks } from "./cv-links";
+import { cleanCvLinks, linkKey, uniqueHyperlinks } from "./cv-links";
 export { linkKey } from "./cv-links";
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -19,7 +19,7 @@ export function dateRange(a: string | null, b: string | null) {
 }
 
 export function contactLine(cv: CV, t: Template) {
-  const parts = t.hideContactDetails || t.anonymise ? [cv.location] : [cv.location, cv.email, cv.phone, ...uniqueLinks(cv.links)];
+  const parts = t.hideContactDetails || t.anonymise ? [cv.location] : [cv.location, cv.email, cv.phone, ...cleanCvLinks(cv).links];
   return parts.filter(Boolean).join("  ·  ");
 }
 
@@ -33,7 +33,7 @@ export function normUrl(u: string) {
 export function headerLinks(cv: CV, t: Template) {
   if (t.hideContactDetails || t.anonymise) return [];
   // Links already printed in the contact line are not repeated underneath it.
-  const shown = new Set(cv.links.map(linkKey));
+  const shown = new Set([...cv.links, ...(cv.email ? [cv.email] : [])].map(linkKey));
   return uniqueHyperlinks(cv.hyperlinks).filter((h) => !shown.has(linkKey(h.url)))
     .map((h) => ({ text: h.text, url: normUrl(h.url) }));
 }
