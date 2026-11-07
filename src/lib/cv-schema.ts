@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { normalizeSkills } from "./cv-skills";
+import { cleanCvLinks } from "./cv-links";
 
 export const cvSchema = z.object({
   fullName: z.string(),
@@ -136,5 +137,5 @@ export function separateCategories(cv: CV): CV {
   const separated = skillSource.flatMap((skill) => normalizeSkills([skill])).map(interestParts);
   const skills = separated.flatMap((part) => part.skills);
   const interests = [...separated.flatMap((part) => part.interests), ...forcedInterests, ...(cv.interests ?? [])];
-  return { ...cv, skills, interests: [...new Set(interests)] };
+  return cleanCvLinks({ ...cv, skills, interests: [...new Set(interests)] });
 }

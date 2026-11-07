@@ -4,6 +4,11 @@ import { formatAvailability, emptyRecruiterCover, recruiterCoverContent, salaryG
 
 const cv = cvSchema.parse({ fullName: "Alex Reed", headline: null, location: "London", email: null, phone: null, links: [], summary: null, experience: [], education: [], skills: [], languages: [], certifications: [], interests: [], hyperlinks: [] });
 describe("Recruiter cover information", () => {
+  it("omits a removed recruiter cover and restores it without losing notes", () => {
+    const cover = { ...emptyRecruiterCover, enabled: false, notes: "Ready for interview" };
+    expect(recruiterCoverContent(cv, defaultTemplate, cover)).toBeNull();
+    expect(recruiterCoverContent(cv, defaultTemplate, { ...cover, enabled: true })?.notes).toBe("Ready for interview");
+  });
   it("uses pound sterling for salary expectations", () => { expect(salaryGBP("55000")).toBe("£55000"); expect(salaryGBP("£60,000")).toBe("£60,000"); });
   it("keeps notice period on the cover", () => { expect(recruiterCoverContent(cv, defaultTemplate, { ...emptyRecruiterCover, noticePeriod: "4 weeks" })?.rows).toContainEqual(["Notice period", "4 weeks"]); });
   it("keeps current salary on the cover", () => { expect(recruiterCoverContent(cv, defaultTemplate, { ...emptyRecruiterCover, currentSalary: "45000" })?.rows).toContainEqual(["Current salary", "£45000"]); });
