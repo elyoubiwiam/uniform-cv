@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { emptyRecruiterCover, validRange, WEEKDAYS, type Availability, type RecruiterCover, type TimeRange, type Weekday } from "@/lib/cv-cover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 function AutoTextarea({ value, className, ...props }: React.ComponentProps<typeof Textarea>) {
   const ref = useRef<HTMLTextAreaElement | null>(null);
@@ -208,7 +209,7 @@ function AvailabilityField({ value = {}, onChange }: { value?: Availability | un
 
 export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverChange, anonymise = false }: { cv: CV; onChange: (cv: CV) => void; issues?: Issue[]; onIssues?: (i: Issue[]) => void; cover?: RecruiterCover | undefined; onCoverChange?: ((cover: RecruiterCover) => void) | undefined; anonymise?: boolean }) {
   const details = cover ?? emptyRecruiterCover;
-  const coverField = (key: Exclude<keyof RecruiterCover, "relocation" | "availability">, label: string, fallback = "") => <Field label={label} value={details[key] || fallback} onChange={(value) => onCoverChange?.({ ...details, [key]: value })} />;
+  const coverField = (key: Exclude<keyof RecruiterCover, "relocation" | "availability" | "enabled">, label: string, fallback = "") => <Field label={label} value={details[key] || fallback} onChange={(value) => onCoverChange?.({ ...details, [key]: value })} />;
   const set = <K extends keyof CV>(k: K, v: CV[K]) => onChange({ ...cv, [k]: v });
   const editor = useRef<HTMLDivElement | null>(null);
   const target = useRef<HTMLTextAreaElement | null>(null);
@@ -232,6 +233,11 @@ export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverCh
       </nav>
       {onCoverChange && <section className="space-y-3">
         <Heading>Recruiter cover page</Heading>
+        <div className="flex items-center justify-between gap-3">
+          <Label htmlFor="include-recruiter-cover">Include cover page</Label>
+          <Switch id="include-recruiter-cover" checked={details.enabled !== false} onCheckedChange={(enabled) => onCoverChange({ ...details, enabled })} />
+        </div>
+        {details.enabled !== false && <>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {coverField("candidateName", "Name of candidate", cv.fullName)}
           {coverField("noticePeriod", "Notice period")}
@@ -248,6 +254,7 @@ export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverCh
         <AvailabilityField value={details.availability} onChange={(availability) => onCoverChange({ ...details, availability })} />
         {coverField("notes", "Recruiter notes")}
         {anonymise && <p className="text-xs text-muted-foreground">The anonymous cover uses initials and excludes employer, location and recruiter notes.</p>}
+        </>}
       </section>}
       {issues.length > 0 && (
         <div className="space-y-2 rounded-md border border-destructive/40 bg-card p-3">

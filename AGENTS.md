@@ -14,6 +14,8 @@
 - Landing-page style previews use the shared carousel with larger slides and overflow-only navigation; why: keeps full CV samples readable without changing the compact template-settings chooser.
 - Keep PDF.js on a release compatible with supported browsers (currently v5); why: v6 uses newer Map methods that prevent page rendering in existing Chromium versions.
 - Recruiter cover data lives on each in-memory candidate, outside the extracted CV schema, and a shared cover-content helper feeds preview and both exports; why: recruiter notes must not rewrite source text or leak into candidate-mode or anonymous documents.
+- Cover visibility belongs to each candidate's cover data and is honoured by the shared cover-content helper; why: removing a cover updates preview, pagination and both exports without erasing notes.
+- CV links use shared destination deduplication during category cleanup and header export; why: repeated extracted annotations must not create duplicate editor entries, while case-sensitive paths and queries stay intact.
 - CV editor fields auto-size on text, width, visibility and font changes, and the editor uses normal page scrolling; why: hidden desktop panels must not retain clipped measurements and all content must stay reachable.
 - Preview PDF page counts are read from the actual client-generated export; why: matches downloaded pagination and updates with CV/template changes.
 - Compare mode renders every page of both the original and generated PDF through one shared PDF.js viewer with independent navigation; why: keeps page scale, boundaries, zoom and page controls identical.

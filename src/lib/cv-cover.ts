@@ -2,6 +2,7 @@ import { effectiveTemplate, type CV, type Template } from "./cv-schema";
 
 /** Recruiter-added information is separate from verbatim extracted CV text. */
 export type RecruiterCover = {
+  enabled?: boolean;
   candidateName: string;
   noticePeriod: string;
   currentSalary: string;
@@ -41,7 +42,7 @@ export function salaryGBP(value: string) {
 
 export function recruiterCoverContent(cv: CV, raw: Template, details?: RecruiterCover) {
   const template = effectiveTemplate(raw);
-  if (template.audience !== "recruiter") return null;
+  if (template.audience !== "recruiter" || details?.enabled === false) return null;
   const cover = details ?? emptyRecruiterCover;
   const anonymousName = cv.fullName.trim().split(/\s+/).map((part) => part.charAt(0).toUpperCase()).join(". ");
   return {
