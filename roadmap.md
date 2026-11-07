@@ -32,5 +32,5 @@
 - [x] Remove the Lovable AI fallback, stop logging full AI errors, retry failed extraction calls
 - [x] Allow removing recruiter cover pages without losing their details
 - [x] Deduplicate extracted CV links by destination and retain accurate titles
-- [ ] Expose design settings while editing, including Quick CV edit
-- [ ] Hide mailto prefixes and avoid repeating the email in candidate links
+- [x] Expose design settings while editing, including Quick CV edit
+- [x] Hide mailto prefixes and avoid repeating the email in candidate links

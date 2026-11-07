@@ -5,7 +5,7 @@ import { hasFormatting, parseFormatting } from "./cv-format";
 import { normalizeSkills } from "./cv-skills";
 import { recruiterCoverContent, type RecruiterCover } from "./cv-cover";
 import { fitRecruiterCover } from "./cv-cover-layout";
-import { cleanCvLinks, linkKey, uniqueLinks, uniqueHyperlinks } from "./cv-links";
+import { cleanCvLinks, linkKey, uniqueHyperlinks } from "./cv-links";
 export { linkKey } from "./cv-links";
 
 function hexToRgb(hex: string): [number, number, number] {
