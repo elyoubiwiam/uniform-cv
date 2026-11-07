@@ -30,5 +30,5 @@
 - [x] Privacy copy matches real data handling, including Anthropic's default 30-day API retention
 - [x] Word-for-word check against source text, and contact-detail check on anonymised CVs
 - [x] Remove the Lovable AI fallback, stop logging full AI errors, retry failed extraction calls
-- [ ] Allow removing recruiter cover pages without losing their details
-- [ ] Deduplicate extracted CV links by destination and retain accurate titles
+- [x] Allow removing recruiter cover pages without losing their details
+- [x] Deduplicate extracted CV links by destination and retain accurate titles
