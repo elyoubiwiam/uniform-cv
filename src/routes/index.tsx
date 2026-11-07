@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { cleanCvLinks, sourceHyperlinks, uniqueLinks } from "@/lib/cv-links";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -59,7 +60,7 @@ async function pdfLinks(buf: ArrayBuffer): Promise<string[]> {
         if (uri instanceof PDFString || uri instanceof PDFHexString) urls.add(uri.decodeText());
       }
     }
-    return [...urls].slice(0, 200);
+    return uniqueLinks([...urls]).slice(0, 200);
   } catch {
     return [];
   }
@@ -99,10 +100,10 @@ async function fileToPayload(file: File): Promise<Payload> {
       mammoth.convertToHtml({ arrayBuffer: ab }),
     ]);
     const anchors = Array.from(new DOMParser().parseFromString(html, "text/html").querySelectorAll("a[href]"));
-    const hyperlinks = anchors
-      .map((a) => `${a.textContent?.trim() ?? ""} -> ${a.getAttribute("href")}`)
-      .filter((l) => !l.includes("-> #"))
-      .slice(0, 200);
+    const hyperlinks = sourceHyperlinks(anchors
+      .filter((a) => a.getAttribute("href") && !a.getAttribute("href")?.startsWith("#"))
+      .map((a) => `${a.textContent?.trim() || a.getAttribute("href")} -> ${a.getAttribute("href")}`))
+      .slice(0, 200).map((link) => `${link.text} -> ${link.url}`);
     return { kind: "text", data: value, hyperlinks };
   }
   return { kind: "text", data: await file.text(), hyperlinks: [] };
@@ -191,16 +192,18 @@ function Index() {
         const res = await extract({ data: { filename: c.file.name, ...payload, anonymise: effectiveTemplate(templateRef.current).anonymise } });
         if (res.ok) {
           const anonymised = effectiveTemplate(templateRef.current).anonymise;
+          const embedded = sourceHyperlinks(payload.hyperlinks);
+          const cv = cleanCvLinks({ ...res.cv, hyperlinks: !anonymised && embedded.length ? embedded : res.cv.hyperlinks });
           const source = [payload.data, ...payload.hyperlinks].join("\n");
           const text = payload.kind === "text";
           patch(c.id, {
             status: "ready",
-            cv: res.cv,
-            originalCv: res.cv,
+            cv,
+            originalCv: cv,
             shortenAttempt: 0,
             scanned: !text,
-            verbatim: text ? checkVerbatim(source, res.cv, anonymised) : null,
-            leaks: text && anonymised ? anonymiseLeaks(source, res.cv) : [],
+            verbatim: text ? checkVerbatim(source, cv, anonymised) : null,
+            leaks: text && anonymised ? anonymiseLeaks(source, cv) : [],
           });
         }
         else patch(c.id, { status: "error", error: res.error });

@@ -14,6 +14,15 @@ const bytes = (blob: Blob) => new Promise<ArrayBuffer>((resolve, reject) => {
 });
 
 describe("CV download formatting", () => {
+  it("exports only the CV in PDF and Word when the recruiter cover is removed", async () => {
+    const cover = { ...emptyRecruiterCover, enabled: false, notes: "Cover notes not for export" };
+    const pdf = await PDFDocument.load(await bytes(await buildPdf(cv, defaultTemplate, cover)));
+    expect(pdf.getPageCount()).toBe(1);
+    const zip = await JSZip.loadAsync(await bytes(await buildDocx(cv, defaultTemplate, cover)));
+    const xml = await zip.file("word/document.xml")?.async("string");
+    expect(xml).not.toContain("Cover notes not for export");
+    expect(xml?.match(/<w:sectPr>/g)).toHaveLength(1);
+  });
   it("adds a recruiter cover before the CV in PDF but not candidate mode", async () => {
     const recruiter = await PDFDocument.load(await bytes(await buildPdf(cv, defaultTemplate, { ...emptyRecruiterCover, noticePeriod: "4 weeks" })));
     const candidate = await PDFDocument.load(await bytes(await buildPdf(cv, { ...defaultTemplate, audience: "candidate" })));

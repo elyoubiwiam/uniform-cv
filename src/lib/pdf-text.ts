@@ -1,3 +1,5 @@
+import { annotationTitle, sourceHyperlinks } from "./cv-links";
+
 /** Conservative fast path: every page needs a usable text layer; otherwise use the original PDF. */
 export function hasCompleteTextLayer(pages: string[]) {
   return pages.length > 0 && pages.every((text) => text.trim().length >= 80 && !text.includes("\uFFFD"));
@@ -37,16 +39,11 @@ export async function readPdfText(buffer: ArrayBuffer): Promise<{ text: string; 
       for (const annotation of annotations) {
         if (!annotation.url) continue;
         const rect = annotation.rect as number[];
-        const [left = 0, bottom = 0, right = 0, top = 0] = rect;
-        const title = items.filter((item) => {
-          const x = item.transform[4] ?? 0;
-          const y = item.transform[5] ?? 0;
-          return x < right && x + item.width > left && y >= bottom - 3 && y <= top + 3;
-        }).map((item) => item.str).join(" ").trim();
+        const title = annotationTitle(items, rect);
         hyperlinks.push(title ? `${title} -> ${annotation.url}` : annotation.url);
       }
     }
-    return hasCompleteTextLayer(pages) ? { text: pages.join("\n\n"), hyperlinks: [...new Set(hyperlinks)].slice(0, 200) } : null;
+    return hasCompleteTextLayer(pages) ? { text: pages.join("\n\n"), hyperlinks: sourceHyperlinks(hyperlinks).slice(0, 200).map((link) => `${link.text} -> ${link.url}`) } : null;
   } finally {
     await task.destroy();
   }
