@@ -12,6 +12,7 @@ import { checkCv, extractCv, shortenCv } from "@/lib/cv.functions";
 import { liveIssues } from "@/lib/proofread";
 import { anonymiseLeaks, checkVerbatim } from "@/lib/verbatim";
 import { StylePicker } from "@/components/cv/StylePicker";
+import { TemplateSettings } from "@/components/cv/TemplateSettings";
 import { defaultTemplate, effectiveTemplate, separateCategories, type Template } from "@/lib/cv-schema";
 import { buildDocx, buildPdf, downloadBlob, safeFileName } from "@/lib/cv-export";
 import type { Candidate } from "@/components/cv/types";
@@ -524,6 +525,7 @@ function Index() {
                     <p className="text-sm text-muted-foreground">From {selected.file.name}{selected.scanned && <span className="ml-2 rounded-sm bg-accent/10 px-1.5 py-0.5 text-xs text-accent">Read from a scan. Check carefully</span>}{effectiveTemplate(template).anonymise && <span className="ml-2 inline-flex items-center gap-1"><EyeOff className="h-3 w-3" /> Anonymised</span>}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <TemplateSettings template={template} onChange={setTemplate} />
                     <Button variant="outline" size="sm" disabled={exporting || reviewingDownloads || selected.checking} onClick={() => requestDownload("docx", selected.id)}>
                       <FileText className="h-4 w-4" /> Word
                     </Button>

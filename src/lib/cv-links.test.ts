@@ -7,6 +7,15 @@ import { annotationTitle, cleanCvLinks, sourceHyperlinks } from "./cv-links";
 const cv = cvSchema.parse({ fullName: "Jane Doe", headline: null, location: null, email: null, phone: null, links: [], summary: null, experience: [], education: [], skills: [], languages: [], certifications: [], interests: [], hyperlinks: [{ text: "Portfolio", url: "https://example.com/work" }] });
 
 describe("Candidate header links", () => {
+  it("does not repeat an email as a mailto link beside the email field", () => {
+    const emailCv = { ...cv, email: "jane@example.com", links: ["mailto:jane@example.com"], hyperlinks: [{ text: "mailto:jane@example.com", url: "mailto:jane@example.com" }] };
+    expect(cleanCvLinks(emailCv)).toMatchObject({ email: "jane@example.com", links: [], hyperlinks: [] });
+    expect(headerLinks(emailCv, defaultTemplate)).toEqual([]);
+  });
+  it("shows an email without the mailto prefix when no email field exists", () => {
+    expect(cleanCvLinks({ ...cv, hyperlinks: [{ text: "mailto:jane@example.com", url: "mailto:jane@example.com" }] }).hyperlinks)
+      .toEqual([{ text: "jane@example.com", url: "mailto:jane@example.com" }]);
+  });
   it("shows only one link for repeated versions of the same destination", () => {
     const repeated = { ...cv, hyperlinks: [
       { text: "Portfolio", url: "https://example.com/work" },
