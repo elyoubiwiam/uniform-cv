@@ -2,6 +2,7 @@ import { ArrowDown, Bold, Check, Italic, Plus, Trash2, Underline, X } from "luci
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toggleMark, type Mark } from "@/lib/cv-format";
 import { normalizeSkills } from "@/lib/cv-skills";
+import { sortByDate } from "@/lib/cv-dates";
 import { applyFix, type Issue } from "@/lib/proofread";
 import type { CV } from "@/lib/cv-schema";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,11 +45,11 @@ const lines = (s: string) => s.split("\n").map((l) => l.trim()).filter(Boolean);
 const list = (s: string) => s.split(",").map((l) => l.trim()).filter(Boolean);
 const orNull = (s: string) => (s.trim() ? s : null);
 
-function Field({ label, value, onChange, rich }: { label: string; value: string | null; onChange: (v: string) => void; multiline?: boolean; rich?: boolean }) {
+function Field({ label, value, onChange, rich, onBlur }: { label: string; value: string | null; onChange: (v: string) => void; multiline?: boolean; rich?: boolean; onBlur?: () => void }) {
   return (
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
-      <AutoTextarea data-rich={rich || undefined} value={value ?? ""} onChange={(e) => onChange(e.target.value)} rows={1} aria-label={label} />
+      <AutoTextarea data-rich={rich || undefined} value={value ?? ""} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} rows={1} aria-label={label} />
     </div>
   );
 }
@@ -211,6 +212,10 @@ export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverCh
   const details = cover ?? emptyRecruiterCover;
   const coverField = (key: Exclude<keyof RecruiterCover, "relocation" | "availability" | "enabled">, label: string, fallback = "") => <Field label={label} value={details[key] || fallback} onChange={(value) => onCoverChange?.({ ...details, [key]: value })} />;
   const set = <K extends keyof CV>(k: K, v: CV[K]) => onChange({ ...cv, [k]: v });
+  const latest = useRef(cv);
+  latest.current = cv;
+  const sortexperience = () => { const c = latest.current; const next = sortByDate(c.experience); if (next.some((x, i) => x !== c.experience[i])) onChange({ ...c, experience: next }); };
+  const sorteducation = () => { const c = latest.current; const next = sortByDate(c.education); if (next.some((x, i) => x !== c.education[i])) onChange({ ...c, education: next }); };
   const editor = useRef<HTMLDivElement | null>(null);
   const target = useRef<HTMLTextAreaElement | null>(null);
   const rich = (el: EventTarget) => el instanceof HTMLTextAreaElement && el.dataset["rich"] ? el : null;
@@ -299,7 +304,7 @@ export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverCh
       })}
       <Field label="Profile" value={cv.summary} onChange={(v) => set("summary", orNull(v))} multiline rich />
 
-      <Heading onAdd={() => set("experience", [...cv.experience, { title: "", company: "", location: null, startDate: null, endDate: null, bullets: [] }])}>
+      <Heading onAdd={() => set("experience", [{ title: "", company: "", location: null, startDate: null, endDate: null, bullets: [] }, ...cv.experience])}>
         Experience
       </Heading>
       {cv.experience.map((e, i) => {
@@ -309,8 +314,8 @@ export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverCh
             <div className="grid grid-cols-2 gap-3">
               <Field label="Job title" value={e.title} onChange={(v) => up({ title: v })} />
               <Field label="Company" value={e.company} onChange={(v) => up({ company: v })} />
-              <Field label="Start" value={e.startDate} onChange={(v) => up({ startDate: orNull(v) })} />
-              <Field label="End" value={e.endDate} onChange={(v) => up({ endDate: orNull(v) })} />
+              <Field label="Start" value={e.startDate} onChange={(v) => up({ startDate: orNull(v) })} onBlur={() => sortexperience()} />
+              <Field label="End" value={e.endDate} onChange={(v) => up({ endDate: orNull(v) })} onBlur={() => sortexperience()} />
             </div>
             <Field label="Location" value={e.location} onChange={(v) => up({ location: orNull(v) })} />
             <DraftField label="Bullet points (one per line)" items={e.bullets} sep={"\n"} parse={lines} onChange={(v) => up({ bullets: v })} multiline rich />
@@ -321,7 +326,7 @@ export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverCh
         );
       })}
 
-      <Heading onAdd={() => set("education", [...cv.education, { degree: "", institution: "", startDate: null, endDate: null, details: null }])}>
+      <Heading onAdd={() => set("education", [{ degree: "", institution: "", startDate: null, endDate: null, details: null }, ...cv.education])}>
         Education
       </Heading>
       {cv.education.map((e, i) => {
@@ -331,8 +336,8 @@ export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverCh
             <div className="grid grid-cols-2 gap-3">
               <Field label="Degree" value={e.degree} onChange={(v) => up({ degree: v })} />
               <Field label="Institution" value={e.institution} onChange={(v) => up({ institution: v })} />
-              <Field label="Start" value={e.startDate} onChange={(v) => up({ startDate: orNull(v) })} />
-              <Field label="End" value={e.endDate} onChange={(v) => up({ endDate: orNull(v) })} />
+              <Field label="Start" value={e.startDate} onChange={(v) => up({ startDate: orNull(v) })} onBlur={() => sorteducation()} />
+              <Field label="End" value={e.endDate} onChange={(v) => up({ endDate: orNull(v) })} onBlur={() => sorteducation()} />
             </div>
             <Field label="Details" value={e.details} onChange={(v) => up({ details: orNull(v) })} multiline rich />
             <Button variant="ghost" size="sm" className="text-destructive" onClick={() => set("education", cv.education.filter((_, j) => j !== i))}>
