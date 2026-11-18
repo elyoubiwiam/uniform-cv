@@ -14,6 +14,20 @@ export function idsNeedingReview(candidates: Reviewable[], ids: string[]): strin
   return ids.filter((id) => {
     const candidate = byId.get(id);
     if (!candidate || candidate.cv == null) return false;
-    return JSON.stringify(candidate.cv) !== candidate.checkedCv;
+    return checkSignature(candidate.cv) !== candidate.checkedCv;
   });
+}
+// Fingerprint of the CV's words, ignoring formatting markers, spacing and entry order,
+// so tidying or date re-sorting after a check doesn't count as new content.
+export function checkSignature(cv: unknown): string {
+  const parts: string[] = [];
+  const walk = (value: unknown) => {
+    if (typeof value === "string") {
+      const text = value.replace(/\*\*|__|\*/g, "").replace(/\s+/g, " ").trim();
+      if (text) parts.push(text);
+    } else if (Array.isArray(value)) value.forEach(walk);
+    else if (value && typeof value === "object") Object.keys(value).sort().forEach((key) => walk((value as Record<string, unknown>)[key]));
+  };
+  walk(cv);
+  return parts.sort().join("\u0000");
 }

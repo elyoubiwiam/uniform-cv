@@ -208,7 +208,7 @@ function AvailabilityField({ value = {}, onChange }: { value?: Availability | un
   );
 }
 
-export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverChange, anonymise = false }: { cv: CV; onChange: (cv: CV) => void; issues?: Issue[]; onIssues?: (i: Issue[]) => void; cover?: RecruiterCover | undefined; onCoverChange?: ((cover: RecruiterCover) => void) | undefined; anonymise?: boolean }) {
+export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverChange, anonymise = false }: { cv: CV; onChange: (cv: CV, meta?: { fix?: boolean }) => void; issues?: Issue[]; onIssues?: (i: Issue[]) => void; cover?: RecruiterCover | undefined; onCoverChange?: ((cover: RecruiterCover) => void) | undefined; anonymise?: boolean }) {
   const details = cover ?? emptyRecruiterCover;
   const coverField = (key: Exclude<keyof RecruiterCover, "relocation" | "availability" | "enabled">, label: string, fallback = "") => <Field label={label} value={details[key] || fallback} onChange={(value) => onCoverChange?.({ ...details, [key]: value })} />;
   const set = <K extends keyof CV>(k: K, v: CV[K]) => onChange({ ...cv, [k]: v });
@@ -270,7 +270,7 @@ export function CvEditor({ cv, onChange, issues = [], onIssues, cover, onCoverCh
                 <span className="underline decoration-destructive decoration-wavy">{i.text}</span> → <strong>{i.suggestion}</strong>
                 <span className="ml-1 text-xs text-muted-foreground">({i.reason})</span>
               </span>
-              <Button size="sm" variant="outline" onClick={() => { onChange(applyFix(cv, i)); onIssues?.(issues.filter((x) => x.id !== i.id)); }}>
+              <Button size="sm" variant="outline" onClick={() => { onChange(applyFix(cv, i), { fix: true }); onIssues?.(issues.filter((x) => x.id !== i.id)); }}>
                 <Check className="h-4 w-4" /> Accept
               </Button>
               <Button size="sm" variant="ghost" onClick={() => onIssues?.(issues.filter((x) => x.id !== i.id))}>

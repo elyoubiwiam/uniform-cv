@@ -22,7 +22,7 @@ import { CvEditor } from "@/components/cv/CvEditor";
 import { PdfPageStack } from "@/components/cv/PdfPageStack";
 import { PdfPageCount } from "@/components/cv/PdfPageCount";
 import { RecruiterDetails } from "@/components/cv/RecruiterDetails";
-import { downloadReviewIds, idsNeedingReview } from "@/lib/download-review";
+import { checkSignature, downloadReviewIds, idsNeedingReview } from "@/lib/download-review";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -134,7 +134,7 @@ function Index() {
     patch(c.id, { checking: true });
     const res = await check({ data: { cv: c.cv } }).catch(() => null);
     if (res?.ok) {
-      patch(c.id, { checking: false, checkedCv: JSON.stringify(c.cv), issues: res.issues.map((i) => ({ ...i, id: crypto.randomUUID() })) });
+      patch(c.id, { checking: false, checkedCv: checkSignature(c.cv), issues: res.issues.map((i) => ({ ...i, id: crypto.randomUUID() })) });
       if (!res.issues.length) toast.success("No spelling or grammar issues found.");
     } else {
       patch(c.id, { checking: false });
@@ -582,7 +582,7 @@ function Index() {
                     <TabsTrigger value="compare">Compare</TabsTrigger>
                   </TabsList>
                   <TabsContent value="side"><PdfPageStack cv={selected.cv} template={template} cover={selected.cover} /></TabsContent>
-                  <TabsContent value="edit"><CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={(cover) => patch(selected.id, { cover })} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} /></TabsContent>
+                  <TabsContent value="edit"><CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={(cover) => patch(selected.id, { cover })} onChange={(cv, meta) => patch(selected.id, meta?.fix && selected.checkedCv === checkSignature(selected.cv) ? { cv, checkedCv: checkSignature(cv) } : { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} /></TabsContent>
                   <TabsContent value="compare" className="space-y-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original</p>
                     <OriginalView file={selected.file} />
@@ -599,7 +599,7 @@ function Index() {
                 <div className={`hidden gap-8 lg:grid ${desktopView === "compare" ? "lg:grid-cols-2" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"}`}>
                   <div className="min-w-0">
                     {desktopView === "edit" ? (
-                      <CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={(cover) => patch(selected.id, { cover })} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} />
+                      <CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={(cover) => patch(selected.id, { cover })} onChange={(cv, meta) => patch(selected.id, meta?.fix && selected.checkedCv === checkSignature(selected.cv) ? { cv, checkedCv: checkSignature(cv) } : { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} />
                     ) : (
                       <>
                         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original · {selected.file.name}</p>
