@@ -34,3 +34,4 @@
 - [x] Deduplicate extracted CV links by destination and retain accurate titles
 - [x] Expose design settings while editing, including Quick CV edit
 - [x] Hide mailto prefixes and avoid repeating the email in candidate links
+- Preview on the right shows real PDF pages with page breaks: done

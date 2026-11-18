@@ -19,7 +19,7 @@ import type { Candidate } from "@/components/cv/types";
 import { OriginalView } from "@/components/cv/OriginalView";
 import { GeneratedPdfView } from "@/components/cv/GeneratedPdfView";
 import { CvEditor } from "@/components/cv/CvEditor";
-import { CvPreview } from "@/components/cv/CvPreview";
+import { PdfPageStack } from "@/components/cv/PdfPageStack";
 import { PdfPageCount } from "@/components/cv/PdfPageCount";
 import { RecruiterDetails } from "@/components/cv/RecruiterDetails";
 import { downloadReviewIds, idsNeedingReview } from "@/lib/download-review";
@@ -581,7 +581,7 @@ function Index() {
                     <TabsTrigger value="edit">Edit</TabsTrigger>
                     <TabsTrigger value="compare">Compare</TabsTrigger>
                   </TabsList>
-                  <TabsContent value="side"><CvPreview cv={selected.cv} template={template} cover={selected.cover} issues={liveIssues(selected.cv, selected.issues ?? [])} /></TabsContent>
+                  <TabsContent value="side"><PdfPageStack cv={selected.cv} template={template} cover={selected.cover} /></TabsContent>
                   <TabsContent value="edit"><CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={(cover) => patch(selected.id, { cover })} onChange={(cv) => patch(selected.id, { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} /></TabsContent>
                   <TabsContent value="compare" className="space-y-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original</p>
@@ -612,7 +612,7 @@ function Index() {
                     {desktopView === "compare" ? (
                       <GeneratedPdfView cv={selected.cv} template={template} cover={selected.cover} />
                     ) : (
-                      <CvPreview cv={selected.cv} template={template} cover={selected.cover} issues={liveIssues(selected.cv, selected.issues ?? [])} />
+                      <PdfPageStack cv={selected.cv} template={template} cover={selected.cover} />
                     )}
                   </div>
                 </div>
