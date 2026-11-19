@@ -40,24 +40,34 @@ export function PdfPageStack({ cv, template, cover }: { cv: CV; template: Templa
     return () => { cancelled = true; clearTimeout(timer); };
   }, [source]);
 
+  const heading = (
+    <div className="mb-3 flex items-center justify-between gap-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Output CV</p>
+      {pages && <p className="text-xs text-muted-foreground">{pages.length} PDF page{pages.length === 1 ? "" : "s"}</p>}
+    </div>
+  );
+
   if (!pages) {
-    return <div className="aspect-[1/1.414] w-full rounded-sm bg-card p-6 text-sm text-muted-foreground shadow-sm">Creating the preview…</div>;
+    return <div>{heading}<div className="aspect-[1/1.414] w-full rounded-sm bg-card p-6 text-sm text-muted-foreground shadow-sm">Creating the preview…</div></div>;
   }
   return (
-    <div className="space-y-2">
-      {pages.map((src, i) => (
-        <div key={i}>
-          {i > 0 && (
-            <div className="my-3 flex items-center gap-3 text-xs font-medium text-muted-foreground" aria-hidden="true">
-              <span className="h-px flex-1 border-t border-dashed border-border" />
-              Page break
-              <span className="h-px flex-1 border-t border-dashed border-border" />
-            </div>
-          )}
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Page {i + 1} of {pages.length}</p>
-          <img src={src} alt={`Page ${i + 1} of ${pages.length}`} className="block w-full rounded-sm bg-card shadow-[0_1px_3px_rgb(0_0_0/0.08),0_12px_40px_-12px_rgb(0_0_0/0.18)]" />
-        </div>
-      ))}
+    <div>
+      {heading}
+      <div className="space-y-2">
+        {pages.map((src, i) => (
+          <div key={i}>
+            {i > 0 && (
+              <div className="my-3 flex items-center gap-3 text-xs font-medium text-muted-foreground" aria-hidden="true">
+                <span className="h-px flex-1 border-t border-dashed border-border" />
+                Page break
+                <span className="h-px flex-1 border-t border-dashed border-border" />
+              </div>
+            )}
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Page {i + 1} of {pages.length}</p>
+            <img src={src} alt={`Page ${i + 1} of ${pages.length}`} className="block w-full rounded-sm bg-card shadow-[0_1px_3px_rgb(0_0_0/0.08),0_12px_40px_-12px_rgb(0_0_0/0.18)]" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -35,13 +35,6 @@ ANONYMISE MODE (overrides format-only for personal data only): you MAY modify co
 - After removing information, re-read every affected sentence and repair it so it stays grammatically and syntactically correct: capitalise the new first word of a sentence (e.g. "I'm 24 years old, and open to…" → "Open to…"), remove dangling conjunctions, commas and connectors left behind, and fix pronoun/verb agreement only where the removal broke it. Change no other words.
 - Keep everything else verbatim.`;
 
-const SHORTEN = `You shorten a structured candidate CV for a recruitment agency.
-- Keep the same structure, all roles, and all education entries.
-- You may remove content and rephrase the summary and bullet points so the shortened text remains clear, natural, and coherent.
-- Preserve the original meaning and every factual detail you retain. Never add, infer, exaggerate, or alter facts, numbers, skills, titles, employers, dates, or outcomes.
-- Keep names, dates, companies, contact fields, education, skills, languages, certifications, and interests exactly unchanged.
-- Keep hyperlinks unchanged when their linked text remains; drop a hyperlink only if its text no longer appears.`;
-
 export type ExtractResult = { ok: true; cv: CV } | { ok: false; error: string };
 
 type Content = Array<{ type: "text"; text: string } | { type: "file"; filename: string; data: string; mediaType: string }>;
@@ -49,20 +42,6 @@ type Content = Array<{ type: "text"; text: string } | { type: "file"; filename: 
 /** Full AI errors can include the request, and so the CV. Log only the kind of error. */
 function errorName(err: unknown) {
   return err instanceof Error ? err.name : "UnknownError";
-}
-
-function preserveFixedFields(original: CV, proposed: CV): CV {
-  const experience = original.experience.map((role, index) => ({
-    ...role,
-    bullets: proposed.experience[index]?.bullets.slice(0, 3) ?? role.bullets.slice(0, 3),
-  }));
-  const retainedText = JSON.stringify({ summary: proposed.summary, experience });
-  return {
-    ...original,
-    summary: proposed.summary,
-    experience,
-    hyperlinks: original.hyperlinks.filter((link) => retainedText.includes(link.text)),
-  };
 }
 
 async function runCv(instructions: string, content: Content): Promise<ExtractResult> {
@@ -111,15 +90,6 @@ export const extractCv = createServerFn({ method: "POST" })
     const result = await runCv(BASE + (data.anonymise ? ANON : ""), content);
     if (data.anonymise && result.ok) return { ok: true, cv: tidyAnonymisedCv(result.cv) };
     return result;
-  });
-
-export const shortenCv = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({ cv: cvSchema, anonymise: z.boolean().default(false), attempt: z.number().int().min(0).max(100) }).parse(d))
-  .handler(async ({ data }): Promise<ExtractResult> => {
-    const text = `Attempt ${data.attempt + 1} — produce a fresh variation.\n\nCV JSON:\n${JSON.stringify(data.cv)}`;
-    const result = await runCv(SHORTEN, [{ type: "text", text }]);
-    if (!result.ok) return result;
-    return { ok: true, cv: preserveFixedFields(data.cv, result.cv) };
   });
 
 const issuesSchema = z.object({

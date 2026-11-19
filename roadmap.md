@@ -35,3 +35,5 @@
 - [x] Expose design settings while editing, including Quick CV edit
 - [x] Hide mailto prefixes and avoid repeating the email in candidate links
 - Preview on the right shows real PDF pages with page breaks: done
+- [x] Show the same paginated output and page total inside Edit on every screen size
+- [x] Remove the content-shortening functionality and its references

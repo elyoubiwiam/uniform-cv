@@ -31,13 +31,12 @@ Need to fix just one CV? **Quick CV edit** on the start page opens a single file
 - **Recruiter notes:** a notes box for your own comments on each candidate.
 - **Compare mode:** original and generated PDFs shown at the same size, each with its own page navigation.
 - **Spelling and grammar review:** suggestions are offered before every download. Nothing is corrected automatically.
-- **Make shorter:** an optional condensed version when a CV runs too long.
 - **Anonymise option** for blind submissions.
 - **Live page count**, so you know how long the exported CV will be.
 
 ## Privacy
 
-Uniform is free to use and needs no account. A dedicated privacy and data page explains how CV data is handled. Most of the work (editing, comparing, PDF and Word generation) runs entirely in the browser. Only text extraction, shortening and proofreading call an AI service: the Claude API from Anthropic, which by default deletes API data within 30 days and doesn't train on it.
+Uniform is free to use and needs no account. A dedicated privacy and data page explains how CV data is handled. Most of the work (editing, comparing, PDF and Word generation) runs entirely in the browser. Only text extraction and proofreading call an AI service: the Claude API from Anthropic, which by default deletes API data within 30 days and doesn't train on it.
 
 ## Tech stack
 

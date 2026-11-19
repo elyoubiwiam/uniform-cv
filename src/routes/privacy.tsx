@@ -19,7 +19,7 @@ const sections: [string, string[]][] = [
   ["Where files go", [
     "Your files are opened in your own browser. Where a PDF or Word file already has text, that text is pulled out in the browser.",
     "The text (or the whole file, for scans, photos and PDFs without usable text) is sent over an encrypted connection, through Uniform's server, to the Claude API from Anthropic, our AI provider. Claude organises it into the standard layout.",
-    "CV text is also sent to Claude if you use Check spelling or Make shorter.",
+    "CV text is also sent to Claude if you use Check spelling.",
     "Uniform has no database and doesn't save CVs on its server.",
   ]],
   ["How long it's kept", [

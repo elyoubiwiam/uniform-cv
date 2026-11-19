@@ -6,9 +6,9 @@ import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
 import { imageType, type ImageType } from "@/lib/file-kind";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Download, FilePenLine, FileText, Loader2, RotateCw, Scissors, RefreshCw, Undo2, SpellCheck, EyeOff, Trash2, Upload, AlertCircle, FileDown } from "lucide-react";
+import { Check, Download, FilePenLine, FileText, Loader2, RotateCw, SpellCheck, EyeOff, Trash2, Upload, AlertCircle, FileDown } from "lucide-react";
 import { toast } from "sonner";
-import { checkCv, extractCv, shortenCv } from "@/lib/cv.functions";
+import { checkCv, extractCv } from "@/lib/cv.functions";
 import { liveIssues } from "@/lib/proofread";
 import { anonymiseLeaks, checkVerbatim } from "@/lib/verbatim";
 import { StylePicker } from "@/components/cv/StylePicker";
@@ -112,7 +112,6 @@ async function fileToPayload(file: File): Promise<Payload> {
 
 function Index() {
   const extract = useServerFn(extractCv);
-  const shorten = useServerFn(shortenCv);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [template, setTemplate] = useState<Template>(defaultTemplate);
@@ -139,17 +138,6 @@ function Index() {
     } else {
       patch(c.id, { checking: false });
       toast.error(res && !res.ok ? res.error : "Couldn't check this CV. Try again.");
-    }
-  };
-
-  const runShorten = async (c: Candidate) => {
-    if (!c.originalCv) return;
-    patch(c.id, { shortening: true });
-    const res = await shorten({ data: { cv: c.originalCv, anonymise: effectiveTemplate(template).anonymise, attempt: c.shortenAttempt } }).catch(() => null);
-    if (res?.ok) patch(c.id, { cv: res.cv, shortening: false, shortenAttempt: c.shortenAttempt + 1 });
-    else {
-      patch(c.id, { shortening: false });
-      toast.error(res && !res.ok ? res.error : "Couldn't shorten this CV. Try again.");
     }
   };
 
@@ -200,8 +188,6 @@ function Index() {
           patch(c.id, {
             status: "ready",
             cv,
-            originalCv: cv,
-            shortenAttempt: 0,
             scanned: !text,
             verbatim: text ? checkVerbatim(source, cv, anonymised) : null,
             leaks: text && anonymised ? anonymiseLeaks(source, cv) : [],
@@ -235,7 +221,7 @@ function Index() {
         toast.error(`${f.name} is larger than 10 MB.`);
         continue;
       }
-      next.push({ id: crypto.randomUUID(), file: f, status: "queued", cv: null, originalCv: null, shortenAttempt: 0, shortening: false, error: null });
+      next.push({ id: crypto.randomUUID(), file: f, status: "queued", cv: null, error: null });
     }
     if (!next.length) return [];
     setCandidates((cs) => [...cs, ...next]);
@@ -254,7 +240,7 @@ function Index() {
 
   const selectedRaw = candidates.find((c) => c.id === selectedId) ?? null;
   const selected = selectedRaw?.cv
-    ? { ...selectedRaw, cv: separateCategories(selectedRaw.cv), originalCv: selectedRaw.originalCv ? separateCategories(selectedRaw.originalCv) : null }
+    ? { ...selectedRaw, cv: separateCategories(selectedRaw.cv) }
     : selectedRaw;
   const done = candidates.filter((c) => c.cv);
   const approved = candidates.filter((c) => c.status === "approved");
@@ -552,26 +538,10 @@ function Index() {
                 </div>
                 <VerbatimNotice candidate={selected} />
                 <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2 text-sm">
-                  <span className="px-1 text-muted-foreground">Length:</span>
-                  {selected.shortenAttempt === 0 ? (
-                    <Button size="sm" variant="outline" disabled={selected.shortening} onClick={() => runShorten(selected)}>
-                      {selected.shortening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scissors className="h-4 w-4" />} Make shorter
-                    </Button>
-                  ) : (
-                    <>
-                      <span className="px-1">Shorter version shown</span>
-                      <Button size="sm" variant="outline" disabled={selected.shortening} onClick={() => runShorten(selected)}>
-                        {selected.shortening ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Try another
-                      </Button>
-                      <Button size="sm" variant="ghost" disabled={selected.shortening} onClick={() => patch(selected.id, { cv: selected.originalCv, shortenAttempt: 0 })}>
-                        <Undo2 className="h-4 w-4" /> Back to original
-                      </Button>
-                    </>
-                  )}
                   <Button size="sm" variant="outline" disabled={selected.checking || reviewingDownloads} onClick={() => runCheck(selected)}>
                     {selected.checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <SpellCheck className="h-4 w-4" />} Check spelling
                   </Button>
-                  <Button size="sm" variant="ghost" className="ml-auto" disabled={selected.shortening} onClick={() => patch(selected.id, { status: "queued", cv: null })}>
+                  <Button size="sm" variant="ghost" className="ml-auto" onClick={() => patch(selected.id, { status: "queued", cv: null })}>
                     <RotateCw className="h-4 w-4" /> Re-read file
                   </Button>
                 </div>
@@ -582,7 +552,13 @@ function Index() {
                     <TabsTrigger value="compare">Compare</TabsTrigger>
                   </TabsList>
                   <TabsContent value="side"><PdfPageStack cv={selected.cv} template={template} cover={selected.cover} /></TabsContent>
-                  <TabsContent value="edit"><CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={(cover) => patch(selected.id, { cover })} onChange={(cv, meta) => patch(selected.id, meta?.fix && selected.checkedCv === checkSignature(selected.cv) ? { cv, checkedCv: checkSignature(cv) } : { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} /></TabsContent>
+                  <TabsContent value="edit" className="space-y-8">
+                    <CvEditor cv={selected.cv} cover={selected.cover} anonymise={template.anonymise} onCoverChange={(cover) => patch(selected.id, { cover })} onChange={(cv, meta) => patch(selected.id, meta?.fix && selected.checkedCv === checkSignature(selected.cv) ? { cv, checkedCv: checkSignature(cv) } : { cv })} issues={liveIssues(selected.cv, selected.issues ?? [])} onIssues={(issues) => patch(selected.id, { issues })} />
+                    <section aria-label="Output CV pages" className="border-t border-border pt-6">
+                      <p className="mb-4 text-sm text-muted-foreground">The PDF layout updates as you edit.</p>
+                      <PdfPageStack cv={selected.cv} template={template} cover={selected.cover} />
+                    </section>
+                  </TabsContent>
                   <TabsContent value="compare" className="space-y-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original</p>
                     <OriginalView file={selected.file} />
@@ -643,9 +619,9 @@ function Index() {
   );
 }
 
-/** Result of the word-for-word check made when the CV was read. Not shown for scans or shortened versions. */
+/** Result of the word-for-word check made when the CV was read. Not shown for scans. */
 function VerbatimNotice({ candidate }: { candidate: Candidate }) {
-  const { verbatim, leaks, shortenAttempt } = candidate;
+  const { verbatim, leaks } = candidate;
   if (leaks?.length) {
     return (
       <p className="mb-4 flex items-start gap-2 rounded-md border border-destructive p-2 text-sm">
@@ -654,7 +630,7 @@ function VerbatimNotice({ candidate }: { candidate: Candidate }) {
       </p>
     );
   }
-  if (!verbatim || shortenAttempt > 0) return null;
+  if (!verbatim) return null;
   if (verbatim.passed) {
     return <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground"><Check className="h-4 w-4 shrink-0 text-success" /> Word-for-word check passed. Nothing added and no large gaps found.</p>;
   }

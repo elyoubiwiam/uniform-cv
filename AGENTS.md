@@ -17,7 +17,7 @@
 - Cover visibility belongs to each candidate's cover data and is honoured by the shared cover-content helper; why: removing a cover updates preview, pagination and both exports without erasing notes.
 - CV links use shared destination deduplication during category cleanup and header export; why: repeated extracted annotations must not create duplicate editor entries, while case-sensitive paths and queries stay intact.
 - CV editor fields auto-size on text, width, visibility and font changes, and the editor uses normal page scrolling; why: hidden desktop panels must not retain clipped measurements and all content must stay reachable.
-- Preview PDF page counts are read from the actual client-generated export; why: matches downloaded pagination and updates with CV/template changes.
+- Edit and Preview show every page of the actual client-generated PDF with a page total and visible breaks; why: matches downloaded pagination and updates with CV/template changes.
 - Compare mode renders every page of both the original and generated PDF through one shared PDF.js viewer with independent navigation; why: keeps page scale, boundaries, zoom and page controls identical.
 - CV extraction runs in a server function (`src/lib/cv.functions.ts`) calling Claude Sonnet 5.5 via the Claude API with a strict zod schema and no fallback provider; why: keeps the key server-side, output uniform, AI cost on pay-as-you-go billing, and CVs only with the provider named on the privacy page.
 - AI errors are logged by error name and status only; why: full SDK errors can contain the request, and so CV text.
@@ -30,7 +30,7 @@
 - Footer branding uses bounded, aspect-ratio-preserving logos and reserved space in preview and exports; why: branding cannot overlap candidate content.
 - CV paragraph boundaries and export spacing are handled by the shared CV layout module; why: consistent readable spacing without rewriting source content.
 - Recruiter details share one form between the start page and Template settings; why: both surfaces edit the same saved template without divergent fields.
-- Every PDF/Word download uses one spelling-review dialog and shared candidate selection, skipped for CVs checked once whose text hasn't changed since (each check snapshots the CV; edits, shortening or re-reading trigger the prompt again); why: consistent prompting without redundant re-checks and without automatically accepting corrections.
+- Every PDF/Word download uses one spelling-review dialog and shared candidate selection, skipped for CVs checked once whose text hasn't changed since (each check snapshots the CV; edits or re-reading trigger the prompt again); why: consistent prompting without redundant re-checks and without automatically accepting corrections.
 - Skill separator normalization is shared by category cleanup, editor blur, preview and exports; why: comma lists and explicit groups remain consistent without rewriting terms.
 - Recruiter logo background removal runs in the browser on flat edge-connected backdrops and produces a transparent PNG; why: preserves logo details without uploading branding to another service, and refuses uncertain patterned backgrounds.
 - Inline bold/italic/underline is stored in CV text as **, *, __ markers parsed by src/lib/cv-format.ts and rendered by preview, PDF and Word; why: no schema change and formatting survives every export.
