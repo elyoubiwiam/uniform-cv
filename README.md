@@ -39,7 +39,7 @@ Need to fix just one CV? **Quick CV edit** on the start page opens a single file
 
 ## Privacy
 
-Uniform is free to use and needs no account. A dedicated privacy and data page explains how CV data is handled. Most of the work (editing, comparing, PDF and Word generation) runs entirely in the browser. Only text extraction and proofreading call an AI service: the Claude API from Anthropic, which by default deletes API data within 30 days and doesn't train on it.
+Uniform is free to use and needs no account. A dedicated privacy and data page explains how CV data is handled. Most of the work (editing, comparing, PDF and Word generation) runs entirely in the browser. Only text extraction and proofreading call an AI service: the Claude API from Anthropic. Anthropic deletes API data within 30 days by default and doesn't train on it unless the customer gives permission, apart from content flagged as breaking its usage policy, which it can use for safety work. The file name is sent with the text, and the page loads its font from Google Fonts.
 
 ## Tech stack
 

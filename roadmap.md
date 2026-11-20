@@ -44,3 +44,4 @@
 - [x] Retry all failed CVs in one click; skip duplicate uploads; clear message for old .doc files
 - [x] Design panel changes are now saved in the browser (they were not before)
 - [x] Clearer download button labels, keyboard-usable upload area, visible remove buttons on touch screens
+- [x] Check every data claim against the code and Anthropic's published policy; correct the privacy page and README (file name, hosting, Google Fonts, training exception)

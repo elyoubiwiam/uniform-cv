@@ -18,20 +18,21 @@ export const Route = createFileRoute("/privacy")({
 const sections: [string, string[]][] = [
   ["Where files go", [
     "Your files are opened in your own browser. Where a PDF or Word file already has text, that text is pulled out in the browser.",
-    "The text (or the whole file, for scans, photos and PDFs without usable text) is sent over an encrypted connection, through Uniform's server, to the Claude API from Anthropic, our AI provider. Claude organises it into the standard layout.",
+    "The text (or the whole file, for scans, photos and PDFs without usable text) is sent over an encrypted connection, through Uniform's server (hosted by Lovable), to the Claude API from Anthropic, our AI provider. Claude organises it into the standard layout. The file name is sent with it, so a file named after the candidate shares that name too.",
     "CV text is also sent to Claude if you use Check spelling.",
     "Uniform has no database and doesn't save CVs on its server.",
+    "Uniform loads its font from Google Fonts, so Google can see your IP address when a page loads. No CV content is sent to Google.",
   ]],
   ["How long it's kept", [
     "Formatted CVs live only in your open browser tab. Refreshing or closing the tab clears them, so download what you need first.",
     "Your template (style, logo, consultant and agency details) is saved in this browser only, until you clear it.",
     "There are no accounts.",
     "Anthropic deletes what is sent through its API within 30 days by default. It can keep data longer where needed to enforce its usage policy or comply with the law.",
-    "By default, Anthropic doesn't use data sent through its API to train its models.",
+    "Anthropic doesn't use data sent through its API to train its models unless the customer gives permission. Content that Anthropic flags as breaking its usage policy can be used for its safety work.",
   ]],
   ["UK GDPR", [
     "Uniform is designed with UK GDPR in mind. When a recruitment agency uses Uniform, the agency remains the data controller for its candidates' data, and Uniform acts as a processor on its behalf, only to format CVs.",
-    "Data is kept to a minimum: Uniform only processes what's in the file, and only to format it. Anthropic acts as a sub-processor.",
+    "Data is kept to a minimum: Uniform only processes what's in the file, and only to format and proofread it. Anthropic acts as a sub-processor, and the server the data passes through is hosted by Lovable.",
     "Anonymise mode asks Claude to remove names, contact details and other personal details, so Claude does see the full CV first. Always check the result before sharing it with a client.",
     "For data requests or to ask about a data processing agreement, contact elyoubi.wia@gmail.com.",
   ]],
