@@ -24,10 +24,12 @@ import { PdfPageCount } from "@/components/cv/PdfPageCount";
 import { RecruiterDetails } from "@/components/cv/RecruiterDetails";
 import { checkSignature, downloadReviewIds, idsNeedingReview } from "@/lib/download-review";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { cleanCvLinks, sourceHyperlinks, uniqueLinks } from "@/lib/cv-links";
+import { missingDetails } from "@/lib/cv-checks";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -121,6 +123,7 @@ function Index() {
   const [exporting, setExporting] = useState(false);
   const [downloadRequest, setDownloadRequest] = useState<{ kind: "pdf" | "docx"; ids: string[] } | null>(null);
   const [reviewingDownloads, setReviewingDownloads] = useState(false);
+  const [confirm, setConfirm] = useState<{ title: string; description: string; action: string; run: () => void } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const quickInputRef = useRef<HTMLInputElement>(null);
   const running = useRef(new Set<string>());
@@ -158,6 +161,23 @@ function Index() {
     }
   };
 
+  /** Used by every template control, so changes are always saved and anonymise changes explain themselves. */
+  const changeTemplate = (t: Template) => {
+    if (t.anonymise !== template.anonymise && candidates.some((c) => c.cv || c.status === "reading" || c.status === "queued")) {
+      toast.info("Anonymise only applies to CVs read from now on. Use Re-read file on any CV that is already open.");
+    }
+    updateTemplate(t);
+  };
+
+  // CVs only live in this tab, so warn before a refresh or close would lose them.
+  const hasCvs = candidates.some((c) => c.cv);
+  useEffect(() => {
+    if (!hasCvs) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasCvs]);
+
   const patch = (id: string, p: Partial<Candidate>) => setCandidates((cs) => cs.map((c) => (c.id === id ? { ...c, ...p } : c)));
 
   /** The logo links to "/", the same route the tool lives on, so going home also clears the working session. */
@@ -170,6 +190,28 @@ function Index() {
     window.scrollTo({ top: 0 });
   };
 
+
+  /** Removing one CV is easy to undo, so it needs no confirmation. */
+  const removeCandidate = (id: string) => {
+    const index = candidates.findIndex((c) => c.id === id);
+    const removed = candidates[index];
+    if (!removed) return;
+    const neighbour = candidates[index + 1] ?? candidates[index - 1];
+    setCandidates((cs) => cs.filter((c) => c.id !== id));
+    setSelectedId((s) => (s === id ? neighbour?.id ?? null : s));
+    toast(`Removed ${removed.cv?.fullName || removed.file.name}`, {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          const restored: Candidate = { ...removed, status: removed.cv ? removed.status : "queued", error: null };
+          setCandidates((cs) => (cs.some((c) => c.id === id) ? cs : [...cs.slice(0, index), restored, ...cs.slice(index)]));
+          setSelectedId(id);
+        },
+      },
+    });
+  };
+  const failed = candidates.filter((c) => c.status === "error");
+  const retryFailed = () => setCandidates((cs) => cs.map((c): Candidate => (c.status === "error" ? { ...c, status: "queued", error: null } : c)));
 
   const process = useCallback(
     async (c: Candidate) => {
@@ -212,11 +254,22 @@ function Index() {
 
   const addFiles = (files: FileList | File[]): Candidate[] => {
     const next: Candidate[] = [];
+    const fileKey = (f: File) => `${f.name}|${f.size}|${f.lastModified}`;
+    const seen = new Set(candidates.map((c) => fileKey(c.file)));
     for (const f of Array.from(files)) {
+      if (/\.doc$/i.test(f.name)) {
+        toast.error(`${f.name}: older Word (.doc) files can't be read. Save it as .docx or PDF and add it again.`);
+        continue;
+      }
       if (!/\.(pdf|docx|txt|png|jpe?g|webp)$/i.test(f.name)) {
         toast.error(`${f.name}: only PDF, Word (.docx), text or image (JPG, PNG, WEBP) files.`);
         continue;
       }
+      if (seen.has(fileKey(f))) {
+        toast.info(`${f.name} is already in your list.`);
+        continue;
+      }
+      seen.add(fileKey(f));
       if (f.size > MAX_BYTES) {
         toast.error(`${f.name} is larger than 10 MB.`);
         continue;
@@ -289,6 +342,7 @@ function Index() {
     setExporting(true);
     try {
       const used = new Set<string>();
+      const files: { name: string; blob: Blob }[] = [];
       for (const c of list) {
         if (!c.cv) continue;
         const separated = separateCategories(c.cv);
@@ -297,9 +351,18 @@ function Index() {
         let n = 2;
         while (used.has(name)) name = safeFileName(separated, kind).replace(`.${kind}`, `_${n++}.${kind}`);
         used.add(name);
-        downloadBlob(blob, name);
-        // small gap so browsers allow each separate download
-        await new Promise((r) => setTimeout(r, 400));
+        files.push({ name, blob });
+      }
+      const [only] = files;
+      if (files.length === 1 && only) {
+        downloadBlob(only.blob, only.name);
+      } else if (files.length > 1) {
+        // One ZIP avoids the browser asking to allow many separate downloads.
+        const JSZip = (await import("jszip")).default;
+        const zip = new JSZip();
+        for (const f of files) zip.file(f.name, f.blob);
+        downloadBlob(await zip.generateAsync({ type: "blob" }), `Uniform_${kind === "pdf" ? "PDF" : "Word"}_CVs.zip`);
+        toast.success(`${files.length} CVs downloaded in one ZIP file.`);
       }
     } catch (e) {
       console.error(e);
@@ -309,13 +372,23 @@ function Index() {
     }
   };
 
+  const downloadScope = approved.length ? `Download ${approved.length} approved as` : done.length > 1 ? `Download all ${done.length} as` : "Download as";
   const onLanding = candidates.length === 0 || !started;
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
       <header className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-6 py-3">
           <div className="flex min-w-0 items-center gap-3">
-            <Link to="/" onClick={goHome} className="flex items-center gap-3" aria-label="Uniform, back to homepage">
+            <Link
+              to="/"
+              onClick={(e) => {
+                if (!candidates.length) { goHome(); return; }
+                e.preventDefault();
+                setConfirm({ title: "Go back to the start?", description: "This clears your CVs and any edits from this tab. Download what you need first.", action: "Clear and go back", run: goHome });
+              }}
+              className="flex items-center gap-3"
+              aria-label="Uniform, back to homepage"
+            >
               <img src={uniformIcon} alt="" aria-hidden className="h-8 w-8 shrink-0" width={32} height={32} />
               <span className="font-display text-2xl font-semibold leading-none tracking-tight">Uniform<span className="text-accent">.</span></span>
             </Link>
@@ -331,11 +404,11 @@ function Index() {
             ) : (
               <>
                 <Button size="sm" variant="outline" disabled={!done.length || exporting || reviewingDownloads} onClick={() => requestDownload("docx")}>
-                  <FileDown className="h-4 w-4" /> Word
+                  <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">{downloadScope}</span> Word
                 </Button>
                 <Button size="sm" disabled={!done.length || exporting || reviewingDownloads} onClick={() => requestDownload("pdf")}>
                   {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                  <span className="hidden sm:inline">Export {approved.length ? `${approved.length} approved` : done.length ? `all ${done.length}` : ""}</span> PDF
+                  <span className="hidden sm:inline">{downloadScope}</span> PDF
                 </Button>
               </>
             )}
@@ -399,31 +472,31 @@ function Index() {
               <p className="mb-4 mt-1 text-sm text-muted-foreground">You can change it at any time.</p>
               <StylePicker template={template} onChange={updateTemplate} enlarged />
               <label className="mt-6 flex items-start gap-3 rounded-lg bg-muted p-4 text-sm">
-                <input type="checkbox" checked={template.anonymise} onChange={(e) => updateTemplate({ ...template, anonymise: e.target.checked })} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]" />
+                <input type="checkbox" checked={template.anonymise} onChange={(e) => changeTemplate({ ...template, anonymise: e.target.checked })} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]" />
                 <span><span className="font-medium">Anonymise candidates.</span> <span className="text-muted-foreground">Names become initials. Email, phone, address and links are removed.</span></span>
               </label>
             </div>
             <div>
               <h2 className="text-xl font-semibold tracking-tight"><span className="text-accent">2.</span> Add your details <span className="text-sm font-normal text-muted-foreground">(optional)</span></h2>
               <p className="mb-4 mt-1 text-sm text-muted-foreground">Shown on the cover page and footer.</p>
-              <RecruiterDetails template={template} onChange={updateTemplate} />
+              <RecruiterDetails template={template} onChange={changeTemplate} />
             </div>
             <div id="upload" className="scroll-mt-24">
               <h2 className="text-xl font-semibold tracking-tight"><span className="text-accent">3.</span> Upload CVs</h2>
               <DropZone dragging={dragging} setDragging={setDragging} onFiles={addFiles} inputRef={inputRef} big />
               {candidates.length > 0 && (
                 <div className="animate-rise mt-4 space-y-3 rounded-lg border border-border p-4">
-                  <p className="text-sm font-medium">{candidates.length} CV{candidates.length > 1 ? "s" : ""} ready. Check the list, then start.</p>
+                  <p className="text-sm font-medium">{candidates.length} CV{candidates.length > 1 ? "s" : ""} added and being read now. Remove any you don't need, then review them.</p>
                   <ul className="space-y-1">
                     {candidates.map((c) => (
                       <li key={c.id} className="flex items-center gap-2 text-sm">
                         <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                         <span className="min-w-0 flex-1 truncate">{c.file.name}</span>
-                        <button className="text-muted-foreground hover:text-destructive" aria-label={`Remove ${c.file.name}`} onClick={() => { setCandidates((cs) => cs.filter((x) => x.id !== c.id)); setSelectedId((s) => (s === c.id ? null : s)); }}><Trash2 className="h-4 w-4" /></button>
+                        <button className="text-muted-foreground hover:text-destructive" aria-label={`Remove ${c.file.name}`} onClick={() => removeCandidate(c.id)}><Trash2 className="h-4 w-4" /></button>
                       </li>
                     ))}
                   </ul>
-                  <Button size="lg" className="w-full sm:w-auto" onClick={() => { setSelectedId((s) => s ?? candidates[0]?.id ?? null); setStarted(true); window.scrollTo({ top: 0 }); }}>Start formatting</Button>
+                  <Button size="lg" className="w-full sm:w-auto" onClick={() => { setSelectedId((s) => s ?? candidates[0]?.id ?? null); setStarted(true); window.scrollTo({ top: 0 }); }}>Review my CVs</Button>
                 </div>
               )}
             </div>
@@ -447,10 +520,18 @@ function Index() {
         <main className={cn("mx-auto grid gap-6 px-6 py-6", desktopView === "compare" ? "max-w-[1800px] lg:grid-cols-1" : "max-w-[1500px] lg:grid-cols-[300px_1fr]")}>
           <aside className={cn("space-y-3", desktopView === "compare" && "lg:hidden")}>
             <DropZone dragging={dragging} setDragging={setDragging} onFiles={addFiles} inputRef={inputRef} />
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{progress.finished} of {progress.total} processed · {approved.length} approved</span>
-              <button className="hover:text-destructive" onClick={() => { setCandidates([]); setSelectedId(null); setStarted(false); }}>Clear all</button>
+            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span aria-live="polite">{progress.finished} of {progress.total} read · {approved.length} approved</span>
+              <button
+                className="underline-offset-2 hover:text-destructive hover:underline"
+                onClick={() => setConfirm({ title: "Clear all CVs?", description: "This removes every CV and your edits from this tab. Download what you need first.", action: "Clear all", run: () => { setCandidates([]); setSelectedId(null); setStarted(false); } })}
+              >Clear all</button>
             </div>
+            {failed.length > 0 && (
+              <Button size="sm" variant="outline" className="w-full" onClick={retryFailed}>
+                <RotateCw className="h-4 w-4" /> Retry {failed.length} that failed
+              </Button>
+            )}
             <ul className="space-y-1">
               {candidates.map((c) => (
                 <li key={c.id}>
@@ -468,12 +549,10 @@ function Index() {
                       </span>
                     </button>
                     <button
-                      aria-label="Remove"
-                      className="opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                      onClick={() => {
-                        setCandidates((cs) => cs.filter((x) => x.id !== c.id));
-                        if (selectedId === c.id) setSelectedId(null);
-                      }}
+                      aria-label={`Remove ${c.cv?.fullName || c.file.name}`}
+                      title="Remove"
+                      className="rounded-sm p-1 transition-opacity hover:text-destructive focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                      onClick={() => removeCandidate(c.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -485,7 +564,7 @@ function Index() {
 
           <section className="min-w-0">
             {!selected ? (
-              <p className="py-20 text-center text-muted-foreground">Select a CV on the left to review it.</p>
+              <p className="py-20 text-center text-muted-foreground">Select a CV from the list to review it.</p>
             ) : !selected.cv ? (
               <div className="flex flex-col items-center gap-4 py-24 text-center">
                 {selected.status === "error" ? (
@@ -511,12 +590,12 @@ function Index() {
                     <p className="text-sm text-muted-foreground">From {selected.file.name}{selected.scanned && <span className="ml-2 rounded-sm bg-accent/10 px-1.5 py-0.5 text-xs text-accent">Read from a scan. Check carefully</span>}{effectiveTemplate(template).anonymise && <span className="ml-2 inline-flex items-center gap-1"><EyeOff className="h-3 w-3" /> Anonymised</span>}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <TemplateSettings template={template} onChange={setTemplate} />
+                    <TemplateSettings template={template} onChange={changeTemplate} />
                     <Button variant="outline" size="sm" disabled={exporting || reviewingDownloads || selected.checking} onClick={() => requestDownload("docx", selected.id)}>
-                      <FileText className="h-4 w-4" /> Word
+                      <FileText className="h-4 w-4" /> Download Word
                     </Button>
                     <Button variant="outline" size="sm" disabled={exporting || reviewingDownloads || selected.checking} onClick={() => requestDownload("pdf", selected.id)}>
-                      <Download className="h-4 w-4" /> PDF
+                      <Download className="h-4 w-4" /> Download PDF
                     </Button>
                     {selected.status === "approved" ? (
                       <Button size="sm" variant="secondary" onClick={() => patch(selected.id, { status: "ready" })}>
@@ -529,6 +608,8 @@ function Index() {
                           patch(selected.id, { status: "approved" });
                           const next = candidates.find((c) => c.id !== selected.id && c.status === "ready");
                           if (next) setSelectedId(next.id);
+                          else if (candidates.some((c) => c.id !== selected.id && (c.status === "queued" || c.status === "reading"))) toast.info("Approved. The remaining CVs are still being read.");
+                          else toast.success("Approved. That was the last CV to review. Download them from the top of the page.");
                         }}
                       >
                         <Check className="h-4 w-4" /> Approve & next
@@ -537,11 +618,12 @@ function Index() {
                   </div>
                 </div>
                 <VerbatimNotice candidate={selected} />
+                <MissingNotice items={missingDetails(selected.cv, { contactHidden: template.anonymise || template.hideContactDetails })} />
                 <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2 text-sm">
                   <Button size="sm" variant="outline" disabled={selected.checking || reviewingDownloads} onClick={() => runCheck(selected)}>
                     {selected.checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <SpellCheck className="h-4 w-4" />} Check spelling
                   </Button>
-                  <Button size="sm" variant="ghost" className="ml-auto" onClick={() => patch(selected.id, { status: "queued", cv: null })}>
+                  <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setConfirm({ title: "Read this CV again?", description: "Your edits to this CV's text will be replaced with a fresh read of the original file. Your recruiter cover details are kept.", action: "Read again", run: () => patch(selected.id, { status: "queued", cv: null }) })}>
                     <RotateCw className="h-4 w-4" /> Re-read file
                   </Button>
                 </div>
@@ -562,7 +644,7 @@ function Index() {
                   <TabsContent value="compare" className="space-y-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original</p>
                     <OriginalView file={selected.file} />
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uniformed<PdfPageCount cv={selected.cv} template={template} cover={selected.cover} /></p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Formatted<PdfPageCount cv={selected.cv} template={template} cover={selected.cover} /></p>
                     <GeneratedPdfView cv={selected.cv} template={template} cover={selected.cover} />
                   </TabsContent>
                 </Tabs>
@@ -584,7 +666,7 @@ function Index() {
                     )}
                   </div>
                   <div className={cn("sticky top-20 self-start", desktopView === "edit" && "max-h-[calc(100vh-6rem)] overflow-y-auto overscroll-contain")}>
-                    {desktopView === "compare" && <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uniformed<PdfPageCount cv={selected.cv} template={template} cover={selected.cover} /></p>}
+                    {desktopView === "compare" && <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Formatted<PdfPageCount cv={selected.cv} template={template} cover={selected.cover} /></p>}
                     {desktopView === "compare" ? (
                       <GeneratedPdfView cv={selected.cv} template={template} cover={selected.cover} />
                     ) : (
@@ -597,6 +679,18 @@ function Index() {
           </section>
         </main>
       )}
+      <AlertDialog open={confirm !== null} onOpenChange={(open) => { if (!open) setConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirm?.title}</AlertDialogTitle>
+            <AlertDialogDescription>{confirm?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep my work</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { const run = confirm?.run; setConfirm(null); run?.(); }}>{confirm?.action}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Dialog open={downloadRequest !== null} onOpenChange={(open) => { if (!open) setDownloadRequest(null); }}>
         <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-lg">
           <DialogHeader>
@@ -646,6 +740,17 @@ function VerbatimNotice({ candidate }: { candidate: Candidate }) {
   );
 }
 
+/** Things a client would expect that the CV doesn't contain. Informational: nothing is added automatically. */
+function MissingNotice({ items }: { items: string[] }) {
+  if (!items.length) return null;
+  return (
+    <p className="mb-4 flex items-start gap-2 rounded-md border border-border bg-card p-2 text-sm">
+      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+      <span>Not found in this CV: {items.join(", ")}. Check the original, and add them below if you have them.</span>
+    </p>
+  );
+}
+
 function StatusIcon({ status }: { status: Candidate["status"] }) {
   if (status === "approved") return <Check className="h-4 w-4 shrink-0 text-success" />;
   if (status === "error") return <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />;
@@ -672,17 +777,19 @@ function DropZone({
       onDragLeave={() => setDragging(false)}
       onDrop={(e) => { e.preventDefault(); setDragging(false); onFiles(e.dataTransfer.files); }}
       onClick={() => inputRef.current?.click()}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inputRef.current?.click(); } }}
       role="button"
       tabIndex={0}
+      aria-label="Add CVs: drop files here or press Enter to choose them"
       className={cn(
-        "flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-border text-center transition-colors hover:border-accent",
+        "flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-border text-center transition-colors hover:border-accent focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50",
         dragging && "border-accent bg-accent/5",
         big ? "mt-10 gap-3 bg-card px-6 py-14" : "gap-1 px-4 py-5",
       )}
     >
       <Upload className={cn("text-accent", big ? "h-8 w-8" : "h-5 w-5")} />
       <p className={cn("font-medium", big ? "text-lg" : "text-sm")}>{big ? "Drop CVs here or click to upload" : "Add more CVs"}</p>
-      {big && <p className="text-sm text-muted-foreground">PDF, Word, text, or a photo/scan (JPG, PNG) · up to 10 MB each · as many as you like</p>}
+      {big && <p className="text-sm text-muted-foreground">PDF, Word (.docx), text, or a photo or scan (JPG, PNG, WEBP) · up to 10 MB each · as many as you like</p>}
       <input
         ref={inputRef}
         type="file"

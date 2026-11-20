@@ -17,7 +17,7 @@ Agency and in-house **recruiters** who need to send clients a stack of CVs in on
 1. **Upload in bulk.** Drop in as many PDFs, Word files, text files or photos/scans (JPG, PNG, WebP) as you like, up to 10 MB each. Scanned CVs are read with OCR, and five CVs are processed at once so big batches move quickly.
 2. **Rebuilt in one format.** AI extracts each CV into a structured layout. It formats only and never rewrites the candidate's content.
 3. **Review side by side.** Compare the original and the formatted version page by page, and edit any text, link or detail directly.
-4. **Export.** Download each CV as a client-ready PDF or Word file.
+4. **Export.** Download each CV as a client-ready PDF or Word file. Downloading several at once gives you a single ZIP.
 
 Need to fix just one CV? **Quick CV edit** on the start page opens a single file so you can correct the text and download it again as PDF or Word.
 
@@ -33,6 +33,9 @@ Need to fix just one CV? **Quick CV edit** on the start page opens a single file
 - **Spelling and grammar review:** suggestions are offered before every download. Nothing is corrected automatically.
 - **Anonymise option** for blind submissions.
 - **Live page count**, so you know how long the exported CV will be.
+- **Gap hints:** a short note when a CV has no email, phone, work history or dates, so nothing reaches a client incomplete.
+- **Template file:** save your template (including logo) as a file to back it up, use it on another computer or share it with colleagues.
+- **Safe by default:** removing a CV can be undone, clearing everything or re-reading a CV asks first, and the browser warns before you close a tab holding CVs.
 
 ## Privacy
 

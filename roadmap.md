@@ -37,3 +37,10 @@
 - Preview on the right shows real PDF pages with page breaks: done
 - [x] Show the same paginated output and page total inside Edit on every screen size
 - [x] Remove the content-shortening functionality and its references
+- [x] Download several CVs as one ZIP instead of many separate downloads
+- [x] Save and load the template as a file (backup, another computer, colleagues)
+- [x] Hints for details missing from a CV (email, phone, work history, dates)
+- [x] Undo for removed CVs; confirmation before clearing everything, leaving via the logo or re-reading a CV; warning before closing a tab with CVs
+- [x] Retry all failed CVs in one click; skip duplicate uploads; clear message for old .doc files
+- [x] Design panel changes are now saved in the browser (they were not before)
+- [x] Clearer download button labels, keyboard-usable upload area, visible remove buttons on touch screens
